@@ -50,7 +50,6 @@ def overlay_transparent(background, overlay, x, y):
     return background
 
 
-
 def apply_filter(frame):
     """단일 프레임(이미지)에 필터 적용"""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
