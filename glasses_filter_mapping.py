@@ -6,7 +6,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 filter_path = "assets/glasses_filter.png"
-input_path = "smile_girl.mp4" #"Lena.png"
+input_path = "smile_girl.mp4" #"Lena.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -86,20 +86,24 @@ def apply_glasses_filter(frame):
         landmarks = predictor(gray, face)
         pts = np.array([[p.x, p.y] for p in landmarks.parts()])
 
-        # SolvePnP용 2D 포인트
+        # ===== 2D 포인트 =====
         image_points = np.array([
-            pts[30],  # 코 끝
-            pts[8],   # 턱
-            pts[36],  # 왼쪽 눈 바깥
-            pts[45],  # 오른쪽 눈 바깥
-            pts[48],  # 왼쪽 입
-            pts[54]   # 오른쪽 입
+            pts[30],  # nose tip
+            pts[8],   # chin
+            pts[36],  # left eye outer
+            pts[45],  # right eye outer
+            pts[48],  # left mouth corner
+            pts[54]   # right mouth corner
         ], dtype=np.float32)
 
         h, w = frame.shape[:2]
-        cam_matrix = np.array([[w, 0, w/2],[0, w, h/2],[0,0,1]], dtype=np.float32)
+        cam_matrix = np.array([
+            [w, 0, w / 2],
+            [0, w, h / 2],
+            [0, 0, 1]
+        ], dtype=np.float32)
 
-        # 안정적인 solvePnP 호출
+        # ===== 안정적 PnP =====
         if prev_rvec is None:
             success, rvec, tvec = cv2.solvePnP(
                 model_points, image_points, cam_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE
@@ -113,72 +117,72 @@ def apply_glasses_filter(frame):
         if not success:
             continue
 
-        # 오일러 각 계산
+        # ===== 오일러 각 보정 =====
         pitch, yaw, roll = euler_from_rvec(rvec)
-
-        # yaw 연속성 보정
         if prev_angles is not None:
             prev_pitch, prev_yaw, prev_roll = prev_angles
-            if abs(yaw - prev_yaw) > 150:
-                yaw = -yaw
-                pitch = -pitch
-                roll = -roll
-                rvec = -rvec
             alpha = 0.7
             pitch = alpha * prev_pitch + (1 - alpha) * pitch
-            yaw = alpha * prev_yaw + (1 - alpha) * yaw
-            roll = alpha * prev_roll + (1 - alpha) * roll
-
+            yaw   = alpha * prev_yaw   + (1 - alpha) * yaw
+            roll  = alpha * prev_roll  + (1 - alpha) * roll
         prev_angles = (pitch, yaw, roll)
         prev_rvec, prev_tvec = rvec.copy(), tvec.copy()
 
-        # ====== 안경 크기/좌표 계산 ======
+        # ===== 눈 중심, 3D 기준 계산 =====
         left_eye = pts[36:42].mean(axis=0)
         right_eye = pts[42:48].mean(axis=0)
-        eye_center = (left_eye + right_eye) / 2
-        eye_width = np.linalg.norm(right_eye - left_eye)
+        nose_tip = pts[30]
+        eye_center_2D = (left_eye + right_eye) / 2
 
-        # 안경 이미지 알파 채널 기준 크롭
+        # 3D 상의 눈 중심 계산 (모델 포인트 기준)
+        eye_left_3D = model_points[2]   # left eye outer
+        eye_right_3D = model_points[3]  # right eye outer
+        eye_center_3D = (eye_left_3D + eye_right_3D) / 2
+
+        # ===== 안경의 3D 좌표 정의 =====
+        eye_distance_3D = np.linalg.norm(eye_right_3D - eye_left_3D)
+        glasses_w_3D = eye_distance_3D * 1.6  # 얼굴 폭의 약 2배
+        glasses_h_3D = glasses_w_3D * 0.35    # 안경 세로 비율
+
+        # 중심 위치 (눈보다 살짝 아래, 코 기준)
+        glasses_center_3D = eye_center_3D + np.array([0, -eye_distance_3D * 0.08, eye_distance_3D * 0.1])
+
+        # 네 모서리 3D 좌표 (안경 평면)
+        glasses_3D = np.array([
+            [-glasses_w_3D/2,  glasses_h_3D/2,  0],
+            [ glasses_w_3D/2,  glasses_h_3D/2,  0],
+            [ glasses_w_3D/2, -glasses_h_3D/2,  0],
+            [-glasses_w_3D/2, -glasses_h_3D/2,  0]
+        ], dtype=np.float32) + glasses_center_3D
+
+        # ===== 3D → 2D 투영 =====
+        projected_pts, _ = cv2.projectPoints(glasses_3D, rvec, tvec, cam_matrix, dist_coeffs)
+        dst_pts = projected_pts.reshape(-1, 2).astype(np.float32)
+
+        # ===== 안경 크기 조정 =====
         alpha = filter_img[:, :, 3]
         ys, xs = np.where(alpha > 0)
         x_min, x_max = xs.min(), xs.max()
         y_min, y_max = ys.min(), ys.max()
         glasses_cropped = filter_img[y_min:y_max+1, x_min:x_max+1]
         g_h, g_w = glasses_cropped.shape[:2]
-        content_w, content_h = x_max - x_min, y_max - y_min
 
-        desired_ratio = 2.0
-        scale_factor = (eye_width * desired_ratio) / g_w
-        new_w = int(g_w * scale_factor)
-        new_h = int(g_h * scale_factor)
-        new_w = max(30, min(new_w, frame.shape[1]//2))  # 최소 30픽셀, 최대 화면 절반
-        new_h = max(15, min(new_h, frame.shape[0]//4))  # 최소 15픽셀, 최대 화면 4분의 1
+        # 스케일 조정 (거리 기반)
+        z_scale = max(0.5, min(2.0, 600 / (tvec[2] + 1e-5)))  # 멀면 작게, 가까우면 크게
+        new_w = int(g_w * z_scale)
+        new_h = int(g_h * z_scale)
         resized = cv2.resize(glasses_cropped, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-        # ====== 3D 안경 모델 포인트 정의 ======
-        glasses_3D = np.array([
-            [-new_w/2,  new_h/2, 0],  # 왼쪽 상단
-            [ new_w/2,  new_h/2, 0],  # 오른쪽 상단
-            [ new_w/2, -new_h/2, 0],  # 오른쪽 하단
-            [-new_w/2, -new_h/2, 0]   # 왼쪽 하단
+        src_pts = np.array([
+            [0, 0],
+            [new_w - 1, 0],
+            [new_w - 1, new_h - 1],
+            [0, new_h - 1]
         ], dtype=np.float32)
 
-        # SolvePnP 결과로 2D 투영
-        eye_center_2D = (left_eye + right_eye) / 2
-        projected_pts, _ = cv2.projectPoints(glasses_3D, rvec, tvec, cam_matrix, dist_coeffs)
-        projected_pts = projected_pts.reshape(-1,2).astype(np.float32)
-
-        proj_center = projected_pts.mean(axis=0)
-        pixel_offset_y = new_h * 0.3  # 여기서는 양수 = 아래로 이동
-        projected_pts += (eye_center_2D - proj_center) + np.array([0, pixel_offset_y])
-
-        # 원본 안경 이미지 4코너
-        src_pts = np.array([[0,0],[new_w-1,0],[new_w-1,new_h-1],[0,new_h-1]], dtype=np.float32)
-        dst_pts = projected_pts
-
-        # 호모그래피 + 투영
+        # ===== 호모그래피 적용 =====
         H = cv2.getPerspectiveTransform(src_pts, dst_pts)
-        warped = cv2.warpPerspective(resized, H, (frame.shape[1], frame.shape[0]), borderValue=(0,0,0,0))
+        warped = cv2.warpPerspective(resized, H, (frame.shape[1], frame.shape[0]), borderValue=(0, 0, 0, 0))
         frame = overlay_transparent(frame, warped, 0, 0)
 
     return frame
@@ -188,7 +192,7 @@ ext = os.path.splitext(input_path)[1].lower()
 if ext in [".jpg", ".jpeg", ".png"]:
     img = cv2.imread(input_path)
     result = apply_glasses_filter(img)
-    output_path = os.path.splitext(input_path)[0] + "_output.png"
+    output_path = os.path.splitext(input_path)[0] + "_glasses.png"
     cv2.imwrite(output_path, result)
     cv2.imshow("AR Glasses (Image)", result)
     print(f"✅ 이미지 결과 저장 완료: {output_path}")
@@ -197,7 +201,7 @@ if ext in [".jpg", ".jpeg", ".png"]:
 else:
     cap = cv2.VideoCapture(input_path)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out_path = os.path.splitext(input_path)[0] + "_output.mp4"
+    out_path = os.path.splitext(input_path)[0] + "_glasses.mp4"
     out = cv2.VideoWriter(out_path, fourcc, cap.get(cv2.CAP_PROP_FPS),
                           (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
