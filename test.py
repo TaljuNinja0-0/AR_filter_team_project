@@ -13,8 +13,8 @@ detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(model_path)
 print("Dlib 초기화 성공.")
 
-""" # 3. OpenCV 이미지 로드 (샘플 이미지 파일명으로 변경하세요)
-img_path = 'Lenna.png' # 본인의 테스트 이미지 파일명으로 변경
+ # 3. OpenCV 이미지 로드 (샘플 이미지 파일명으로 변경하세요)
+img_path = 'Face.jpg' # 본인의 테스트 이미지 파일명으로 변경
 if not os.path.exists(img_path):
     print(f"경고: 테스트 이미지 '{img_path}'를 찾을 수 없습니다. OpenCV 기능만 확인합니다.")
     # 이미지 없으면 임시로 빈 이미지 생성
@@ -41,13 +41,16 @@ if len(faces) > 0:
             x = landmarks.part(i).x
             y = landmarks.part(i).y
             cv2.circle(img, (x, y), 2, (0, 255, 0), -1) # 랜드마크를 녹색 점으로 표시
+            cv2.putText(img, str(i), (x, y-2), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0,0,255), 1) #랜드마크 번호 표시
+
+
 
 cv2.imshow("Setup Test", img)
 cv2.waitKey(0)
-cv2.destroyAllWindows() """
+cv2.destroyAllWindows() 
 
 # 2. 입력 동영상 파일 경로 (반드시 실제 동영상 파일명으로 변경하세요)
-video_path = 'smile_girl.mp4' 
+""" video_path = 'smile_girl.mp4' 
 if not os.path.exists(video_path):
     print(f"오류: 동영상 파일 '{video_path}'을 찾을 수 없습니다. 경로를 확인하세요.")
     exit()
@@ -114,3 +117,4 @@ while cap.isOpened():
 cap.release()
 cv2.destroyAllWindows()
 print("동영상 처리 및 테스트 완료.")
+"""
