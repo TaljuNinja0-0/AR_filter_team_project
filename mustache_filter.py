@@ -6,7 +6,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 mustache_path = "assets/mustache_filter.png"
-input_path = "Face.jpg"  # "Lena.jpg"
+input_path = "smile_girl.mp4"  # "Lena.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -15,7 +15,7 @@ mustache_img = cv2.imread(mustache_path, cv2.IMREAD_UNCHANGED)
 prev_rvec = None
 prev_tvec = None
 prev_angles = None
-
+prev_mustache_width = None
 # === 얼굴 3D 모델 포인트 ===
 model_points = np.array([
     (0.0, 0.0, 0.0),           # 코 끝
@@ -139,10 +139,13 @@ def apply_mustache_filter(frame):
         mustache_center_2D = nose_tip * 0.20 + upper_lip * 0.80
         mustache_center_2D[1] += 1  # 미세 조정
         
-
+        global prev_mustache_width
         # 수염 크기 조절
-        mouth_width = np.linalg.norm(mouth_right - mouth_left)
-        desired_w = int(mouth_width * 2.5)
+        if prev_mustache_width is None:
+            mouth_width = np.linalg.norm(mouth_right - mouth_left)
+            prev_mustache_width = mouth_width * 2.0
+
+        desired_w = int(prev_mustache_width)
         desired_h = int(desired_w * 0.4)
 
         dx = mouth_right[0] - mouth_left[0]
