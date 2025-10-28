@@ -79,15 +79,6 @@ def overlay_transparent(background, overlay, x, y):
     background[y1:y2, x1:x2] = blended.astype(np.uint8)
     return background
 
-def project_filter(frame, rvec, tvec, cam_matrix, dist_coeffs, base_3D, img):
-    projected_pts, _ = cv2.projectPoints(base_3D, rvec, tvec, cam_matrix, dist_coeffs)
-    dst_pts = projected_pts.reshape(-1, 2).astype(np.float32)
-    h, w = img.shape[:2]
-    src_pts = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
-    H = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    warped = cv2.warpPerspective(img, H, (frame.shape[1], frame.shape[0]), borderValue=(0, 0, 0, 0))
-    return warped
-
 def apply_bunny_filter(frame):
     global prev_rvec, prev_tvec, prev_angles
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
