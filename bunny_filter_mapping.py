@@ -7,9 +7,8 @@ import os
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 filter_path = "assets/bunny_filter_1.png"
 input_path = "Lena.png"  # 또는 이미지 파일
-ear_path = "assets/bunny_filter_1.png"
+ear_path = filter_path
 nose_path = "assets/bunny_filter_2.png"
-input_path = "Face.jpg" #"Lena.jpg"
 
 
 detector = dlib.get_frontal_face_detector()
