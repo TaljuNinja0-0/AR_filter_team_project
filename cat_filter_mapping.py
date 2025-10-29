@@ -5,14 +5,14 @@ import os
 
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
-ear_path = "assets/bunny_filter_1.png"
-nose_path = "assets/bunny_filter_2.png"
-input_path = "children.jpg"
+ear_path = "assets/cat_filter_1.png"
+nose_path = "assets/cat_filter_2.png"
+input_path = "woman.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
-bunny_ear_img = cv2.imread(ear_path, cv2.IMREAD_UNCHANGED)
-bunny_nose_img = cv2.imread(nose_path, cv2.IMREAD_UNCHANGED)
+cat_ear_img = cv2.imread(ear_path, cv2.IMREAD_UNCHANGED)
+cat_nose_img = cv2.imread(nose_path, cv2.IMREAD_UNCHANGED)
 
 prev_rvec = None
 prev_tvec = None
@@ -79,7 +79,7 @@ def overlay_transparent(background, overlay, x, y):
     background[y1:y2, x1:x2] = blended.astype(np.uint8)
     return background
 
-def apply_bunny_filter(frame):
+def apply_cat_filter(frame):
     global prev_rvec, prev_tvec, prev_angles
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = detector(gray)
@@ -137,10 +137,10 @@ def apply_bunny_filter(frame):
         nose_tip_3D = model_points[0]
         eye_distance_3D = np.linalg.norm(eye_right_3D - eye_left_3D)
         
-        # ===== (1) 토끼 귀 3D 위치 =====
-        ear_width = eye_distance_3D * 2.4
-        ear_height = eye_distance_3D * 1.0
-        ear_center_3D = nose_tip_3D + np.array([0, eye_distance_3D * 1.8, -eye_distance_3D * 0.4])
+        # ===== (1) 고양이 귀 3D 위치 =====
+        ear_width = eye_distance_3D * 2.0
+        ear_height = eye_distance_3D * 0.8
+        ear_center_3D = nose_tip_3D + np.array([0, eye_distance_3D * 1.5, -eye_distance_3D * 0.4])
         ear_3D = np.array([
             [-ear_width/2,  ear_height/2, 0],
             [ ear_width/2,  ear_height/2, 0],
@@ -148,20 +148,20 @@ def apply_bunny_filter(frame):
             [-ear_width/2, -ear_height/2, 0]
         ], dtype=np.float32) + ear_center_3D
 
-        # ===== (2) 토끼 코 3D 위치 =====
+        # ===== (2) 고양이 코 3D 위치 =====
         nose_size_3D = eye_distance_3D * 0.7
         #nose_center_3D = nose_tip_3D + np.array([0, -18, -6])
 
-        offset_x = -3  # 좌우 조정
-        offset_y = -eye_distance_3D * 0.2  # 코 아래쪽
+        offset_x = -1  # 좌우 조정
+        offset_y = -eye_distance_3D * 0.1  # 코 아래쪽
         offset_z = -eye_distance_3D * 0.1  # 코 앞쪽
         nose_center_3D = nose_tip_3D + np.array([offset_x, offset_y, offset_z])
 
         nose_3D = np.array([
-            [-nose_size_3D*1.2,  nose_size_3D/2, 0],
-            [ nose_size_3D*1.2,  nose_size_3D/2, 0],
-            [ nose_size_3D*1.2, -nose_size_3D/2, 0],
-            [-nose_size_3D*1.2, -nose_size_3D/2, 0]
+            [-nose_size_3D*1.2,  nose_size_3D/3, 0],
+            [ nose_size_3D*1.2,  nose_size_3D/3, 0],
+            [ nose_size_3D*1.2, -nose_size_3D/3, 0],
+            [-nose_size_3D*1.2, -nose_size_3D/3, 0]
         ], dtype=np.float32) + nose_center_3D
 
         # ===== warp + alpha 합성 함수 =====
@@ -189,8 +189,8 @@ def apply_bunny_filter(frame):
             return overlay_transparent(frame, warped, 0, 0)
 
         # ===== 매핑 실행 =====
-        frame = warp_and_overlay(bunny_ear_img, ear_3D)
-        frame = warp_and_overlay(bunny_nose_img, nose_3D)
+        frame = warp_and_overlay(cat_ear_img, ear_3D)
+        frame = warp_and_overlay(cat_nose_img, nose_3D)
 
     return frame
 
@@ -198,17 +198,17 @@ def apply_bunny_filter(frame):
 ext = os.path.splitext(input_path)[1].lower()
 if ext in [".jpg", ".jpeg", ".png"]:
     img = cv2.imread(input_path)
-    result = apply_bunny_filter(img)
-    output_path = os.path.splitext(input_path)[0] + "_bunny.png"
+    result = apply_cat_filter(img)
+    output_path = os.path.splitext(input_path)[0] + "_cat.png"
     cv2.imwrite(output_path, result)
-    cv2.imshow("AR Bunny (Image)", result)
+    cv2.imshow("AR Cat (Image)", result)
     print(f"✅ 이미지 결과 저장 완료: {output_path}")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 else:
     cap = cv2.VideoCapture(input_path)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out_path = os.path.splitext(input_path)[0] + "_bunny.mp4"
+    out_path = os.path.splitext(input_path)[0] + "_cat.mp4"
     out = cv2.VideoWriter(out_path, fourcc, cap.get(cv2.CAP_PROP_FPS),
                           (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
@@ -216,9 +216,9 @@ else:
         ret, frame = cap.read()
         if not ret:
             break
-        result = apply_bunny_filter(frame)
+        result = apply_cat_filter(frame)
         out.write(result)
-        cv2.imshow("AR Bunny (Video)", result)
+        cv2.imshow("AR Cat (Video)", result)
         if cv2.waitKey(1) == 27:  # ESC
             break
     cap.release()
