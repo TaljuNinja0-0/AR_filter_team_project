@@ -7,7 +7,7 @@ import os
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 ear_path = "assets/bunny_filter_1.png"
 nose_path = "assets/bunny_filter_2.png"
-input_path = "Face.jpg" #"Lena.jpg"
+input_path = "smile_girl.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -149,13 +149,19 @@ def apply_bunny_filter(frame):
         ], dtype=np.float32) + ear_center_3D
 
         # ===== (2) 토끼 코 3D 위치 =====
-        nose_size_3D = eye_distance_3D * 0.8
-        nose_center_3D = nose_tip_3D + np.array([0, -5, -5])  # 코 끝 그대로 기준
+        nose_size_3D = eye_distance_3D * 0.7
+        #nose_center_3D = nose_tip_3D + np.array([0, -18, -6])
+
+        offset_x = -2  # 좌우 조정
+        offset_y = -eye_distance_3D * 0.2  # 코 아래쪽
+        offset_z = -eye_distance_3D * 0.1  # 코 앞쪽
+        nose_center_3D = nose_tip_3D + np.array([offset_x, offset_y, offset_z])
+
         nose_3D = np.array([
-            [-nose_size_3D,  nose_size_3D/2, 0],
-            [ nose_size_3D,  nose_size_3D/2, 0],
-            [ nose_size_3D, -nose_size_3D/2, 0],
-            [-nose_size_3D, -nose_size_3D/2, 0]
+            [-nose_size_3D*1.2,  nose_size_3D/2, 0],
+            [ nose_size_3D*1.2,  nose_size_3D/2, 0],
+            [ nose_size_3D*1.2, -nose_size_3D/2, 0],
+            [-nose_size_3D*1.2, -nose_size_3D/2, 0]
         ], dtype=np.float32) + nose_center_3D
 
         # ===== warp + alpha 합성 함수 =====
