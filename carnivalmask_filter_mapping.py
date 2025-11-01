@@ -6,7 +6,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 filter_path = "assets/carnivalmask_filter.png"
-input_path = "medieval_woman.jpg" #"Lena.jpg"
+input_path = "smile_girl2.mp4" #"Lena.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -135,11 +135,11 @@ def apply_carnivalmask_filter(frame):
 
         # ===== 축제 마스크의 3D 좌표 정의 =====
         eye_distance_3D = np.linalg.norm(eye_right_3D - eye_left_3D)
-        carnivalmask_w_3D = eye_distance_3D * 1.6  # 얼굴 폭의 약 2배
-        carnivalmask_h_3D = carnivalmask_w_3D * 0.35    # 축제 마스크 세로 비율
+        carnivalmask_w_3D = eye_distance_3D * 1.6
+        carnivalmask_h_3D = carnivalmask_w_3D * 0.35 
 
         # 중심 위치 (눈보다 살짝 아래, 코 기준)
-        carnivalmask_center_3D = eye_center_3D + np.array([0, -eye_distance_3D * -0.2, eye_distance_3D * 0.1])
+        carnivalmask_center_3D = eye_center_3D + np.array([0, -eye_distance_3D * -0.18, eye_distance_3D * 0.05])
 
         # 네 모서리 3D 좌표 (축제 마스크 평면)
         carnivalmask_3D = np.array([
