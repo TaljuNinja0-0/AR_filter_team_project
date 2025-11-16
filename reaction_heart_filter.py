@@ -6,7 +6,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 filter_path = "assets/heart.png"
-input_path = "smile_girl2.mp4"
+input_path = "smile_girl4.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -14,7 +14,7 @@ filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
 
 # 전역 변수
 blink_counter = 0        # 눈 감은 연속 프레임 수
-BLINK_REQUIRED = 5
+BLINK_REQUIRED = 4
 hearts = []          # 현재 하트 정보 (x, y, width, height, angle)
 heart_timer = 0      # 하트 유지 프레임 카운터
 HEART_DURATION = 10
