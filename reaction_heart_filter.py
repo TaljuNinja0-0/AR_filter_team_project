@@ -6,7 +6,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 filter_path = "assets/heart.png"
-input_path = "smile_girl4.mp4"
+input_path = "smile_girl3.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -127,23 +127,18 @@ def apply_heart_filter(frame):
     return frame
 
 
-# ====== 입력 처리 ======
+# ====== 입력 처리 (영상 전용) ======
+video_exts = [".mp4", ".avi", ".mov", ".mkv"]  # 영상 확장자 목록
 ext = os.path.splitext(input_path)[1].lower()
-if ext in [".jpg", ".jpeg", ".png"]:
-    img = cv2.imread(input_path)
-    result = apply_heart_filter(img)
-    output_path = os.path.splitext(input_path)[0] + "_heart.png"
-    cv2.imwrite(output_path, result)
-    cv2.imshow("AR Heart (Image)", result)
-    print(f"✅ 이미지 결과 저장 완료: {output_path}")
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-else:
+
+if ext in video_exts:
     cap = cv2.VideoCapture(input_path)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out_path = os.path.splitext(input_path)[0] + "_heart.mp4"
-    out = cv2.VideoWriter(out_path, fourcc, cap.get(cv2.CAP_PROP_FPS),
-                          (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+    out = cv2.VideoWriter(
+        out_path, fourcc, cap.get(cv2.CAP_PROP_FPS),
+        (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+    )
 
     while True:
         ret, frame = cap.read()
@@ -154,6 +149,7 @@ else:
         cv2.imshow("AR Heart (Video)", result)
         if cv2.waitKey(1) == 27:  # ESC
             break
+
     cap.release()
     out.release()
     cv2.destroyAllWindows()
