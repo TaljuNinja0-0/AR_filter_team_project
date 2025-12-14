@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 predictor_path = "shape_predictor_68_face_landmarks.dat"
-input_path = "family_photo.jpg"
+#input_path = "mad_girl.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -110,40 +110,85 @@ def apply_filter(frame):
     
     return frame
 
+
 # ====== 입력 처리 ======
 ext = os.path.splitext(str(input_path))[1].lower()
+
 if ext in [".jpg",".jpeg",".png"]:
+    # 사진 처리
     img = cv2.imread(input_path)
-    result = apply_filter(img)
-    cv2.imshow("Pose-stable Funny Filter (Image)", result)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    if img is None:
+        print(f"이미지를 불러올 수 없습니다: {input_path}")
+    else:
+        print("필터 적용 중...")
+        result = apply_filter(img)
+        
+        # 결과 저장 (추가된 부분)
+        output_path = os.path.splitext(input_path)[0] + "_funny.png"
+        cv2.imwrite(output_path, result)
+        print(f"필터 적용된 이미지 저장 완료: {output_path}")
+        
+        # 결과 표시
+        cv2.imshow("Pose-stable Funny Filter (Image)", result)
+        print("아무 키나 누르면 종료됩니다...")
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
 else:
+    # 영상 처리
     cap = cv2.VideoCapture(input_path)
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out_path = os.path.splitext(input_path)[0]+"_posefunny.mp4"
-    out = cv2.VideoWriter(out_path, fourcc, cap.get(cv2.CAP_PROP_FPS),
-                          (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                           int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
     
-    frame_count = 0
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    if not cap.isOpened():
+        print(f"영상을 불러올 수 없습니다: {input_path}")
+    else:
+        # 영상 정보 가져오기
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         
-        result = apply_filter(frame)
-        out.write(result)
-        cv2.imshow("Pose-stable Funny Filter (Video)", result)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out_path = os.path.splitext(input_path)[0] + "_funny.mp4"
+        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
         
-        frame_count += 1
-        if frame_count % 30 == 0:  # 30프레임마다 진행 상황 출력
-            print(f"처리 중... {frame_count} 프레임")
+        print(f"영상 처리 시작... (총 {total_frames} 프레임)")
+        print("처리 중에는 창이 느릴 수 있지만, 저장된 영상은 정상 속도입니다.")
+        print("빠르게 처리하려면 ESC를 눌러 창 표시를 건너뛸 수 있습니다.\n")
         
-        if cv2.waitKey(1) == 27:  # ESC 키로 종료
-            break
-    
-    cap.release()
-    out.release()
-    cv2.destroyAllWindows()
-    print(f"영상 결과 저장 완료: {out_path}")
+        frame_count = 0
+        show_display = True  # 창 표시 여부
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # 필터 적용
+            result = apply_filter(frame)
+            
+            # 결과 저장 (항상 저장)
+            out.write(result)
+            
+            frame_count += 1
+            
+            # 10프레임마다 진행 상황 출력
+            if frame_count % 10 == 0:
+                progress = (frame_count / total_frames) * 100 if total_frames > 0 else 0
+                print(f"처리 중... {frame_count}/{total_frames} 프레임 ({progress:.1f}%)")
+            
+            # 화면 표시 (선택적)
+            if show_display:
+                # 표시용 이미지 크기 축소 (빠른 표시를 위해)
+                display_frame = cv2.resize(result, (width//2, height//2))
+                cv2.imshow("Pose-stable Funny Filter (Video) - ESC: 창 닫기", display_frame)
+                
+                key = cv2.waitKey(1)
+                if key == 27:  # ESC 키
+                    show_display = False
+                    cv2.destroyAllWindows()
+                    print("\n창 표시를 중단했습니다. 백그라운드에서 계속 처리 중...\n")
+        
+        cap.release()
+        out.release()
+        cv2.destroyAllWindows()
+        print(f"\n영상 결과 저장 완료: {out_path}")
