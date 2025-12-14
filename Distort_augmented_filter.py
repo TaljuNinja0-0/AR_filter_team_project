@@ -110,7 +110,7 @@ def apply_filter(frame):
     
     return frame
 
-
+'''
 # ====== 입력 처리 ======
 ext = os.path.splitext(str(input_path))[1].lower()
 
@@ -192,3 +192,5 @@ else:
         out.release()
         cv2.destroyAllWindows()
         print(f"\n영상 결과 저장 완료: {out_path}")
+        
+'''

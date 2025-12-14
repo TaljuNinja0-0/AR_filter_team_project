@@ -1,15 +1,12 @@
 import cv2
-import dlib
 import numpy as np
-import os
 
 
 # ====== 설정 ======
-predictor_path = "shape_predictor_68_face_landmarks.dat"
 filter_path = "assets_moving/camera.mp4"
-input_path = "smile_girl.mp4" #"Lena.jpg"
+#input_path = "smile_girl.mp4" #"Lena.jpg"
 
-ext = os.path.splitext(input_path)[1].lower()
+#ext = os.path.splitext(input_path)[1].lower()
 cap_filter = cv2.VideoCapture(filter_path)
 
 
@@ -28,45 +25,71 @@ def overlay_transparent(background, overlay, alpha_mask):
     blended = overlay_f * alpha + background_f * (1.0 - alpha)
     return blended.astype(np.uint8)
 
+# 채도 감소 (녹색 > 회색)
+def desaturate_green_ui(frame, alpha_mask):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV).astype(np.float32)
+    h, s, v = cv2.split(hsv)
+
+    # 배경이 아닌 영역만
+    ui_mask = (alpha_mask > 10)
+
+    green_ui = (h > 35) & (h < 85) & ui_mask
+
+    s[green_ui] *= 0.15  # 회색화 강도
+
+    hsv = cv2.merge([
+        h,
+        np.clip(s, 0, 255),
+        v
+    ])
+
+    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+
+
 # ====== 그린스크린 제거 함수 ======
 def remove_green_background(frame):
-    b, g, r = cv2.split(frame)
-    diff = (g.astype(np.int16) - np.maximum(r, b).astype(np.int16)).astype(np.int16)
-
-    # diff가 작으면 전경(불투명)으로 처리
-    # 이미지/조명에 따라 튜닝하세요
-    diff_thresh = 30   # diff가 이 값보다 작으면 전경
-    g_min = 60         # 녹색으로 판단하려면 G가 최소 이 값 이상
-
-    # diff가 클수록 투명(0)에 가깝게, 작을수록 불투명(255)
-    alpha = np.clip((diff_thresh - diff) * (255.0 / max(1, diff_thresh)), 0, 255).astype(np.uint8)
-
-
-    mask_strong_green = (diff > (diff_thresh + 30)) & (g > (g_min + 40))
-    alpha[mask_strong_green] = 0
-
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    v = hsv[:, :, 2]
-    alpha[v < 70] = 255
 
-    alpha = cv2.GaussianBlur(alpha, (7, 7), 0)
+    h, s, v = cv2.split(hsv)
+
+    # 네온 그린 배경만 잡기
+    green_bg = (
+        (h > 35) & (h < 85) &     # green hue
+        (s > 120) &              # 채도가 높은 초록만
+        (v > 150)                # 밝은 초록만
+    )
+
+    alpha = np.ones(frame.shape[:2], dtype=np.uint8) * 255
+    alpha[green_bg] = 0
+
+    # 가장자리 부드럽게
+    alpha = cv2.GaussianBlur(alpha, (5, 5), 0)
 
     return alpha
 
+
 # 필터 적용 함수
-def apply_vintage_filter(frame, filter_cap, frame_idx):
-    ret_f, filter_frame = filter_cap.read()
+def apply_camera_filter(frame):
+    global cap_filter
+
+    if not cap_filter.isOpened():
+        cap_filter.open(filter_path)
+
+    ret_f, filter_frame = cap_filter.read()
     if not ret_f:
-        filter_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        ret_f, filter_frame = filter_cap.read()
+        cap_filter.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        ret_f, filter_frame = cap_filter.read()
+        if not ret_f:
+            return frame
 
-    # 초록색 제거 마스크 생성
     alpha_mask = remove_green_background(filter_frame)
-    result = overlay_transparent(frame, filter_frame, alpha_mask)
+    filter_frame = desaturate_green_ui(filter_frame, alpha_mask)
+    return overlay_transparent(frame, filter_frame, alpha_mask)
 
-    # 오버레이 합성
-    return result
 
+
+'''
 # 필터 적용
 # 이미지 입력일 경우 (테스트용)
 if ext in [".jpg", ".jpeg", ".png"]:
@@ -107,3 +130,5 @@ else:
     out.release()
     cv2.destroyAllWindows()
     print(f"✅ 영상 결과 저장 완료: {out_path}")
+
+'''

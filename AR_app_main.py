@@ -3,7 +3,7 @@ import os
 # PySide6 모듈
 from PySide6.QtWidgets import (QApplication, QMainWindow, QFileDialog, QPushButton, QVBoxLayout)
 from PySide6.QtCore import (QTimer, Qt, QDateTime, QSize)
-from PySide6.QtGui import (QImage, QPixmap)
+from PySide6.QtGui import (QImage, QPixmap, QIcon)
 
 # OpenCV 및 Dlib 모듈 (필수)
 import cv2 
@@ -15,6 +15,9 @@ from ui_AR_Filter import Ui_MainWindow
 
 # filter import
 from Distort_augmented_filter import apply_filter as Distorted_filter
+from Glitch_filter_mapping import apply_filter as Glitch_filter
+from camera_filter import apply_camera_filter as camera_filter
+from vintage_filter import apply_vintage_filter as vintage_filter
 
 
 # 에플리케이션 메인 윈도우 클래스
@@ -22,15 +25,58 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         
-        # UI 로드
-        self.setupUi(self) 
+        # UI 로드 (디자인 적용)
+        self.setupUi(self)
         
         self.setWindowTitle("AR Filter Program")
 
         # 윈도우 창 최대화
         self.showMaximized() # 사용자가 크기 조절 가능.
 
-        # === UI 수정 ===
+        # QPushButton (필터 버튼)을 필터링합니다.
+        self.filter_buttons = {
+            self.filter_bnt_01: "filter_bnt_01",
+            self.filter_bnt_02: "filter_bnt_02",
+            self.filter_bnt_03: "filter_bnt_03",
+            self.filter_bnt_04: "filter_bnt_04",
+            self.filter_bnt_05: "filter_bnt_05",
+            self.filter_bnt_06: "filter_bnt_06",
+            self.filter_bnt_07: "filter_bnt_07",
+            self.filter_bnt_08: "filter_bnt_08",
+            self.filter_bnt_09: "filter_bnt_09",
+            self.filter_bnt_10: "filter_bnt_10",
+            self.filter_bnt_11: "filter_bnt_11",
+            self.filter_bnt_12: "filter_bnt_12",
+            self.filter_bnt_13: "filter_bnt_13",
+            self.filter_bnt_14: "filter_bnt_14",
+            self.filter_bnt_15: "filter_bnt_15",
+            self.filter_bnt_16: "filter_bnt_16",
+            self.filter_bnt_17: "filter_bnt_17",
+            self.filter_bnt_18: "filter_bnt_18"
+            }
+        
+        self.filter_icons = {
+            "filter_bnt_01": "icons/filter_01.png",  # 왜곡 필터 아이콘
+            "filter_bnt_02": "icons/filter_02.png",
+            "filter_bnt_03": "icons/filter_03.png",
+            "filter_bnt_04": "icons/filter_04.png",
+            "filter_bnt_05": "icons/filter_05.png",
+            "filter_bnt_06": "icons/filter_06.png",
+            "filter_bnt_07": "icons/filter_07.png",
+            "filter_bnt_08": "icons/filter_08.png",
+            "filter_bnt_09": "icons/filter_09.png",
+            "filter_bnt_10": "icons/filter_10.png",
+            "filter_bnt_11": "icons/filter_11.png",
+            "filter_bnt_12": "icons/filter_12.png",
+            "filter_bnt_13": "icons/filter_13.png",
+            #"filter_bnt_14": None,
+            #"filter_bnt_15": "icons/filter_15.png",
+            #"filter_bnt_16": "icons/filter_16.png",
+            #"filter_bnt_17": "icons/filter_17.png",
+            #filter_bnt_18": "icons/filter_18.png",
+        }
+
+        # === UI  ===
         self.fix_ui_issues()
 
         # === 상태 변수 초기화 ===
@@ -42,14 +88,8 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         self.is_recording = False  # 녹화 중인지 여부
         self.recorded_frames = []  # 녹화된 프레임 저장
         
-        # === 필터 버튼 목록 ===
+        # === 필터 버튼 목록 (QScrollArea에서 동적으로 가져오기) ===
         content_widget = self.filter_scroll_area.widget()
-
-        # QPushButton (필터 버튼)을 필터링합니다.
-        self.filter_buttons = [
-            child for child in content_widget.children() 
-            if isinstance(child, QPushButton) and child.objectName().startswith('filter_')
-        ]
 
         # === 초기 UI 설정 ===
         # 필터 버튼 숨기기
@@ -66,11 +106,9 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
 
         # 필터 버튼 연결 
         for button in self.filter_buttons:
-            # 버튼 이름에서 필터 ID를 추출하여 select_filter에 전달
+            # 버튼 이름에서 필터 ID를 select_filter에 전달
             filter_id = button.objectName()
-            button.clicked.connect(
-                lambda checked, fid=filter_id: self.select_filter(fid)
-            )
+            button.clicked.connect(lambda checked, fid=filter_id: self.select_filter(fid))
         
         # === OpenCV 타이머 설정 ===
         self.timer = QTimer(self)
@@ -81,30 +119,34 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # 각 필터별 함수 연결
         self.filter_map = {
             "filter_bnt_01": Distorted_filter,
+            "filter_bnt_02": Glitch_filter,
+            "filter_bnt_03": camera_filter,
+            "filter_bnt_04": vintage_filter,
             # "filter_bnt_02": other_filter,
         }
         
         # 각 필터별 사용 가능한 미디어 타입 설정
         self.filter_media_support = {
-            "filter_bnt_01": ['video'],  # 영상만
-            "filter_bnt_02": ['image'],           # 사진만 가능
-            "filter_bnt_03": ['video'],           # 영상만 가능
-            "filter_bnt_04": ['image', 'video'],  # 둘 다 가능
-            "filter_bnt_05": ['image'],
-            "filter_bnt_06": ['video'],
-            "filter_bnt_07": ['image', 'video'],
-            "filter_bnt_08": ['image'],
-            "filter_bnt_09": ['video'],
-            "filter_bnt_10": ['image', 'video'],
-            "filter_bnt_11": ['image'],
-            "filter_bnt_12": ['video'],
-            "filter_bnt_13": ['image', 'video'],
-            "filter_bnt_14": ['image'],
-            "filter_bnt_15": ['video'],
+            "filter_bnt_01": ['image', 'video'],  # Distorted_filter
+            "filter_bnt_02": ['image', 'video'],  # Glitch_filter
+            "filter_bnt_03": ['video'],  # camera_filter
+            "filter_bnt_04": ['video'],  # vintage_filter
+            "filter_bnt_05": ['image', 'video'],  # 안경
+            "filter_bnt_06": ['image', 'video'],  # 모노클
+            "filter_bnt_07": ['image', 'video'],  # 강아지
+            "filter_bnt_08": ['image', 'video'],  # 고양이
+            "filter_bnt_09": ['image', 'video'],  # 토끼 
+            "filter_bnt_10": ['image', 'video'],  # 산타
+            "filter_bnt_11": ['image', 'video'],  # 무대 가면
+            "filter_bnt_12": ['image', 'video'],  # 콧수염
+            "filter_bnt_13": ['image', 'video'],  # 흰 마스크
+            "filter_bnt_14": ['video'],  # 하트 필터
+            "filter_bnt_15": ['video'],  # 불 필터
             "filter_bnt_16": ['image', 'video'],
             "filter_bnt_17": ['image'],
             "filter_bnt_18": ['video'],
         }
+
 
     def fix_ui_issues(self):
         # 비디오 비율 유지
@@ -149,21 +191,51 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # brt_box 최소 크기 설정
         self.brt_box.setMinimumWidth(90)
         self.brt_box.setMaximumWidth(110)
+        
+        # === 버튼 이미지 설정 ===
+        self.setup_filter_button_images()
+    
+    def setup_filter_button_images(self):
+        # 필터 버튼에 아이콘 이미지 설정
+        for button in self.filter_buttons:
+            button_name = button.objectName()
+            
+            if button_name in self.filter_icons:
+                icon_path = self.filter_icons[button_name]
+                
+                # 이미지 파일이 존재하는지 확인
+                if os.path.exists(icon_path):
+                    icon = QIcon(icon_path)
+                    button.setIcon(icon)
+                    button.setIconSize(QSize(40, 40))  # 아이콘 크기
+                    button.setText("")  # 텍스트 제거
+                else:
+                    # 이미지가 없으면 버튼 번호만 표시
+                    button_number = button_name.split('_')[-1]
+                    button.setText(button_number)
+
+
 
     def resizeEvent(self, event):
+        """창 크기 변경 시 스크롤 영역 높이 조정"""
         super().resizeEvent(event)
         
+        # 중앙 위젯의 높이 가져오기
         available_height = self.centralwidget.height()
         
+        # 메뉴 토글 버튼 높이 + 여백 고려
         button_height = self.menu_toggle_button.height()
         top_margin = 60  # 버튼 아래 시작 위치
         bottom_margin = 20  # 하단 여백
         
+        # 스크롤 영역 높이 계산
         new_height = available_height - top_margin - bottom_margin
         
+        # 최소 높이 보장
         if new_height < 100:
             new_height = 100
         
+        # 스크롤 영역 크기 조정
         current_geometry = self.filter_scroll_area.geometry()
         self.filter_scroll_area.setGeometry(
             current_geometry.x(),
@@ -184,6 +256,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         for button in self.filter_buttons:
             button_name = button.objectName()
             
+            # 이 버튼이 현재 미디어 타입을 지원하는지 확인
             if button_name in self.filter_media_support:
                 supported_types = self.filter_media_support[button_name]
                 
@@ -228,15 +301,16 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             else:
                 self.media_type = 'unknown'
         else:
-            self.cap = cv2.VideoCapture(0) 
+            self.cap = cv2.VideoCapture(0) # 카메라 시도
             self.media_type = 'video'
             self.loaded_file_path = None
             print("카메라 모드")
 
         if self.cap.isOpened():
-            self.timer.start(30)
+            self.timer.start(30) # 30ms 마다 프레임 업데이트 시작
             print("미디어 로드 및 타이머 시작")
             
+            # 필터 버튼 상태 업데이트
             self.update_filter_buttons_state()
         else:
             print("미디어 파일을 열거나 카메라에 접근할 수 없습니다.")
@@ -245,6 +319,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
     
     def toggle_filter_menu(self, is_checked):
         # 버튼 클릭 > 필터 버튼 띄움 > 버튼 한번 더 클릭 > 캡쳐 및 닫힘
+        """메인 버튼 토글 시 스크롤 영역을 토글하고, 닫힐 때는 캡처를 실행합니다."""
         
         if is_checked:
             # 메뉴 열림 (버튼이 눌린 상태): 스크롤 영역 보이기
@@ -300,6 +375,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         print("녹화 시작")
         
     def stop_recording(self):
+        """영상 녹화를 중지하고 파일로 저장합니다. (영상 모드)"""
         if not self.is_recording or len(self.recorded_frames) == 0:
             print("녹화된 프레임이 없습니다.")
             return
@@ -328,7 +404,10 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         print(f"영상 저장됨: {filename}")
 
     def apply_ar_filter(self, frame, filter_name):
-
+        """
+        [핵심 AR 로직]
+        OpenCV와 Dlib을 사용하여 프레임에 AR 필터를 적용하는 함수입니다.
+        """
         if filter_name in self.filter_map:
             return self.filter_map[filter_name](frame)
         
