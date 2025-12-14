@@ -5,7 +5,7 @@ import os
 import random
 
 predictor_path = "shape_predictor_68_face_landmarks.dat"
-input_path = "tiny_girl.mp4"
+#input_path = "tiny_girl.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -127,7 +127,7 @@ def apply_filter(frame):
     
     return frame
 
-
+'''
 # ====== 입력 처리 ======
 ext = os.path.splitext(str(input_path))[1].lower()
 
@@ -196,3 +196,5 @@ else:
         out.release()
         cv2.destroyAllWindows()
         print(f"\n영상 결과 저장 완료: {out_path}")
+  
+'''
