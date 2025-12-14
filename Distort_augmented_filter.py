@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 predictor_path = "shape_predictor_68_face_landmarks.dat"
-input_path = "tiny_girl.mp4"
+input_path = "family_photo.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -74,26 +74,40 @@ def warp_and_overlay(frame, region_points, scale=1.5, padding=20):
 def apply_filter(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = detector(gray, 0)
-    if len(faces)==0: return frame
+    
+    # 얼굴이 없으면 원본 반환
+    if len(faces) == 0:
+        return frame
 
-    shape = predictor(gray, faces[0])
-    landmarks = shape_to_np(shape)
+    # 모든 얼굴에 대해 필터 적용
+    for face in faces:
+        try:
+            # 각 얼굴의 랜드마크 검출
+            shape = predictor(gray, face)
+            landmarks = shape_to_np(shape)
 
-    # PnP
-    image_points = np.array([
-        landmarks[30], landmarks[8],
-        landmarks[36], landmarks[45],
-        landmarks[48], landmarks[54]
-    ], dtype=np.float32)
-    h,w = frame.shape[:2]
-    cam_matrix = np.array([[w,0,w/2],[0,w,h/2],[0,0,1]], dtype=np.float32)
-    dist_coeffs = np.zeros((4,1))
-    cv2.solvePnP(model_points, image_points, cam_matrix, dist_coeffs)
+            # PnP (카메라 포즈 추정)
+            image_points = np.array([
+                landmarks[30], landmarks[8],
+                landmarks[36], landmarks[45],
+                landmarks[48], landmarks[54]
+            ], dtype=np.float32)
+            
+            h, w = frame.shape[:2]
+            cam_matrix = np.array([[w,0,w/2],[0,w,h/2],[0,0,1]], dtype=np.float32)
+            dist_coeffs = np.zeros((4,1))
+            cv2.solvePnP(model_points, image_points, cam_matrix, dist_coeffs)
 
-    # 눈/입 영역 확대
-    frame = warp_and_overlay(frame, landmarks[36:42], scale=1.8, padding=25)
-    frame = warp_and_overlay(frame, landmarks[42:48], scale=1.8, padding=25)
-    frame = warp_and_overlay(frame, landmarks[48:60], scale=1.5, padding=30)
+            # 눈/입 영역 확대 (왼쪽 눈, 오른쪽 눈, 입)
+            frame = warp_and_overlay(frame, landmarks[36:42], scale=1.8, padding=25)
+            frame = warp_and_overlay(frame, landmarks[42:48], scale=1.8, padding=25)
+            frame = warp_and_overlay(frame, landmarks[48:60], scale=1.5, padding=30)
+            
+        except Exception as e:
+            # 특정 얼굴에서 오류가 발생해도 다른 얼굴은 계속 처리
+            print(f"얼굴 처리 중 오류 발생: {e}")
+            continue
+    
     return frame
 
 # ====== 입력 처리 ======
@@ -102,20 +116,34 @@ if ext in [".jpg",".jpeg",".png"]:
     img = cv2.imread(input_path)
     result = apply_filter(img)
     cv2.imshow("Pose-stable Funny Filter (Image)", result)
-    cv2.waitKey(0); cv2.destroyAllWindows()
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 else:
     cap = cv2.VideoCapture(input_path)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out_path = os.path.splitext(input_path)[0]+"_posefunny.mp4"
-    out = cv2.VideoWriter(out_path,fourcc,cap.get(cv2.CAP_PROP_FPS),
+    out = cv2.VideoWriter(out_path, fourcc, cap.get(cv2.CAP_PROP_FPS),
                           (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
                            int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+    
+    frame_count = 0
     while True:
-        ret,frame=cap.read()
-        if not ret: break
-        result=apply_filter(frame)
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        result = apply_filter(frame)
         out.write(result)
         cv2.imshow("Pose-stable Funny Filter (Video)", result)
-        if cv2.waitKey(1)==27: break
-    cap.release(); out.release(); cv2.destroyAllWindows()
-    print(f"✅ 영상 결과 저장 완료: {out_path}")
+        
+        frame_count += 1
+        if frame_count % 30 == 0:  # 30프레임마다 진행 상황 출력
+            print(f"처리 중... {frame_count} 프레임")
+        
+        if cv2.waitKey(1) == 27:  # ESC 키로 종료
+            break
+    
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+    print(f"영상 결과 저장 완료: {out_path}")
