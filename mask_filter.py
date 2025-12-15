@@ -6,7 +6,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 mask_path = "assets/mask_filter.png"
-input_path = "Face.jpg"  # "Lena.jpg"
+# input_path = "Face.jpg"  # "Lena.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -77,8 +77,9 @@ def overlay_transparent(background, overlay, x, y):
     background[y1:y2, x1:x2] = blended.astype(np.uint8)
     return background
 
-def apply_mask_filter(frame, mask_img):
-    global prev_rvec, prev_tvec, prev_angles
+def apply_mask_filter(frame):
+    global prev_rvec, prev_tvec, prev_angles, mask_img
+    
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = detector(gray)
 
@@ -123,7 +124,7 @@ def apply_mask_filter(frame, mask_img):
 
     return frame
 
-
+'''
 # ====== 입력 처리 ======
 ext = os.path.splitext(input_path)[1].lower()
 if ext in [".jpg", ".jpeg", ".png"]:
@@ -155,3 +156,4 @@ else:
     out.release()
     cv2.destroyAllWindows()
     print(f"✅ 영상 결과 저장 완료: {out_path}")
+'''
