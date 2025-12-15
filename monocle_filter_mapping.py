@@ -5,20 +5,18 @@ import os
 
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
-ear_path = "assets/bunny_filter_1.png"
-nose_path = "assets/bunny_filter_2.png"
-input_path = "woman.jpg"
+filter_path = "assets/monocle_filter.png"
+input_path = "woman.jpg" #"Lena.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
-bunny_ear_img = cv2.imread(ear_path, cv2.IMREAD_UNCHANGED)
-bunny_nose_img = cv2.imread(nose_path, cv2.IMREAD_UNCHANGED)
+filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
 
 prev_rvec = None
 prev_tvec = None
 prev_angles = None
 
-# === 얼굴 3D 모델 포인트 ===
+# === 기본 3D 모델 포인트 (단위: mm) ===
 model_points = np.array([
     (0.0, 0.0, 0.0),           # 코 끝
     (0.0, -63.6, -12.0),       # 턱
@@ -79,7 +77,7 @@ def overlay_transparent(background, overlay, x, y):
     background[y1:y2, x1:x2] = blended.astype(np.uint8)
     return background
 
-def apply_bunny_filter(frame):
+def apply_monocle_filter(frame):
     global prev_rvec, prev_tvec, prev_angles
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = detector(gray)
@@ -88,7 +86,7 @@ def apply_bunny_filter(frame):
         landmarks = predictor(gray, face)
         pts = np.array([[p.x, p.y] for p in landmarks.parts()])
 
-        # ===== 2D → 3D 매핑용 포인트 =====
+        # ===== 2D 포인트 =====
         image_points = np.array([
             pts[30],  # nose tip
             pts[8],   # chin
@@ -105,7 +103,7 @@ def apply_bunny_filter(frame):
             [0, 0, 1]
         ], dtype=np.float32)
 
-        # ===== 안정적 solvePnP =====
+        # ===== 안정적 PnP =====
         if prev_rvec is None:
             success, rvec, tvec = cv2.solvePnP(
                 model_points, image_points, cam_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE
@@ -119,7 +117,7 @@ def apply_bunny_filter(frame):
         if not success:
             continue
 
-        # ===== 오일러 각 안정화 =====
+        # ===== 오일러 각 보정 =====
         pitch, yaw, roll = euler_from_rvec(rvec)
         if prev_angles is not None:
             prev_pitch, prev_yaw, prev_roll = prev_angles
@@ -130,67 +128,62 @@ def apply_bunny_filter(frame):
         prev_angles = (pitch, yaw, roll)
         prev_rvec, prev_tvec = rvec.copy(), tvec.copy()
 
-        # ===== 얼굴 구조 기준 =====
-        eye_left_3D = model_points[2]
-        eye_right_3D = model_points[3]
-        eye_center_3D = (eye_left_3D + eye_right_3D) / 2
-        nose_tip_3D = model_points[0]
+        # ===== 눈 중심, 3D 기준 계산 =====
+        left_eye = pts[36:42].mean(axis=0)
+        right_eye = pts[42:48].mean(axis=0)
+        nose_tip = pts[30]
+
+        eye_left_3D = model_points[2]   # left eye outer
+        eye_right_3D = model_points[3]  # right eye outer
         eye_distance_3D = np.linalg.norm(eye_right_3D - eye_left_3D)
-        
-        # ===== (1) 토끼 귀 3D 위치 =====
-        ear_width = eye_distance_3D * 2.4
-        ear_height = eye_distance_3D * 1.0
-        ear_center_3D = nose_tip_3D + np.array([0, eye_distance_3D * 1.8, -eye_distance_3D * 0.4])
-        ear_3D = np.array([
-            [-ear_width/2,  ear_height/2, 0],
-            [ ear_width/2,  ear_height/2, 0],
-            [ ear_width/2, -ear_height/2, 0],
-            [-ear_width/2, -ear_height/2, 0]
-        ], dtype=np.float32) + ear_center_3D
 
-        # ===== (2) 토끼 코 3D 위치 =====
-        nose_size_3D = eye_distance_3D * 0.7
-        #nose_center_3D = nose_tip_3D + np.array([0, -18, -6])
+        monocle_eye_3D = eye_right_3D  # 보는 사람 기준 오른쪽 눈
+        monocle_center_3D = monocle_eye_3D + np.array([
+            -eye_distance_3D * 0.05,
+            eye_distance_3D * -0.5,  # 살짝 아래쪽
+            eye_distance_3D * 0.05    # 약간 앞으로 튀어나오게
+        ])
 
-        offset_x = -3  # 좌우 조정
-        offset_y = -eye_distance_3D * 0.2  # 코 아래쪽
-        offset_z = -eye_distance_3D * 0.1  # 코 앞쪽
-        nose_center_3D = nose_tip_3D + np.array([offset_x, offset_y, offset_z])
+        monocle_w_3D = eye_distance_3D * 0.8   # 한쪽 렌즈 크기 (안경 대비 절반 정도)
+        monocle_h_3D = monocle_w_3D * 1.0
 
-        nose_3D = np.array([
-            [-nose_size_3D*1.2,  nose_size_3D/2.3, 0],
-            [ nose_size_3D*1.2,  nose_size_3D/2.3, 0],
-            [ nose_size_3D*1.2, -nose_size_3D/2.3, 0],
-            [-nose_size_3D*1.2, -nose_size_3D/2.3, 0]
-        ], dtype=np.float32) + nose_center_3D
+        # 네 모서리 (렌즈 평면)
+        monocle_3D = np.array([
+            [-monocle_w_3D/2.5,  monocle_h_3D,  0],
+            [ monocle_w_3D/2.5,  monocle_h_3D,  0],
+            [ monocle_w_3D/2.5, -monocle_h_3D,  0],
+            [-monocle_w_3D/2.5, -monocle_h_3D,  0]
+        ], dtype=np.float32) + monocle_center_3D
 
-        # ===== warp + alpha 합성 함수 =====
-        def warp_and_overlay(filter_img, target_3D):
-            if filter_img is None:
-                return frame
-            projected_pts, _ = cv2.projectPoints(target_3D, rvec, tvec, cam_matrix, dist_coeffs)
-            dst_pts = projected_pts.reshape(-1, 2).astype(np.float32)
+        # ===== 3D → 2D 투영 =====
+        projected_pts, _ = cv2.projectPoints(monocle_3D, rvec, tvec, cam_matrix, dist_coeffs)
+        dst_pts = projected_pts.reshape(-1, 2).astype(np.float32)
 
-            alpha = filter_img[:, :, 3]
-            ys, xs = np.where(alpha > 0)
-            x_min, x_max = xs.min(), xs.max()
-            y_min, y_max = ys.min(), ys.max()
-            cropped = filter_img[y_min:y_max + 1, x_min:x_max + 1]
-            h_, w_ = cropped.shape[:2]
-            src_pts = np.array([
-                [0, 0],
-                [w_ - 1, 0],
-                [w_ - 1, h_ - 1],
-                [0, h_ - 1]
-            ], dtype=np.float32)
+        # ===== 모노클 크기 조정 =====
+        alpha = filter_img[:, :, 3]
+        ys, xs = np.where(alpha > 0)
+        x_min, x_max = xs.min(), xs.max()
+        y_min, y_max = ys.min(), ys.max()
+        monocle_cropped = filter_img[y_min:y_max+1, x_min:x_max+1]
+        g_h, g_w = monocle_cropped.shape[:2]
 
-            H = cv2.getPerspectiveTransform(src_pts, dst_pts)
-            warped = cv2.warpPerspective(cropped, H, (frame.shape[1], frame.shape[0]), borderValue=(0, 0, 0, 0))
-            return overlay_transparent(frame, warped, 0, 0)
+        # 스케일 조정 (거리 기반)
+        z_scale = max(0.5, min(2.0, 600 / (tvec[2] + 1e-5)))  # 멀면 작게, 가까우면 크게
+        new_w = int(g_w * z_scale)
+        new_h = int(g_h * z_scale)
+        resized = cv2.resize(monocle_cropped, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-        # ===== 매핑 실행 =====
-        frame = warp_and_overlay(bunny_ear_img, ear_3D)
-        frame = warp_and_overlay(bunny_nose_img, nose_3D)
+        src_pts = np.array([
+            [0, 0],
+            [new_w - 1, 0],
+            [new_w - 1, new_h - 1],
+            [0, new_h - 1]
+        ], dtype=np.float32)
+
+        # ===== 호모그래피 적용 =====
+        H = cv2.getPerspectiveTransform(src_pts, dst_pts)
+        warped = cv2.warpPerspective(resized, H, (frame.shape[1], frame.shape[0]), borderValue=(0, 0, 0, 0))
+        frame = overlay_transparent(frame, warped, 0, 0)
 
     return frame
 
@@ -198,17 +191,17 @@ def apply_bunny_filter(frame):
 ext = os.path.splitext(input_path)[1].lower()
 if ext in [".jpg", ".jpeg", ".png"]:
     img = cv2.imread(input_path)
-    result = apply_bunny_filter(img)
-    output_path = os.path.splitext(input_path)[0] + "_bunny.png"
+    result = apply_monocle_filter(img)
+    output_path = os.path.splitext(input_path)[0] + "_monocle.png"
     cv2.imwrite(output_path, result)
-    cv2.imshow("AR Bunny (Image)", result)
+    cv2.imshow("AR Monocle (Image)", result)
     print(f"✅ 이미지 결과 저장 완료: {output_path}")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 else:
     cap = cv2.VideoCapture(input_path)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out_path = os.path.splitext(input_path)[0] + "_bunny.mp4"
+    out_path = os.path.splitext(input_path)[0] + "_monocle.mp4"
     out = cv2.VideoWriter(out_path, fourcc, cap.get(cv2.CAP_PROP_FPS),
                           (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
@@ -216,9 +209,9 @@ else:
         ret, frame = cap.read()
         if not ret:
             break
-        result = apply_bunny_filter(frame)
+        result = apply_monocle_filter(frame)
         out.write(result)
-        cv2.imshow("AR Bunny (Video)", result)
+        cv2.imshow("AR Monocle (Video)", result)
         if cv2.waitKey(1) == 27:  # ESC
             break
     cap.release()
