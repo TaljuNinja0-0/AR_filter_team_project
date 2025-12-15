@@ -1,21 +1,21 @@
-﻿import cv2
+import cv2
 import dlib
 import numpy as np
 import os
 
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
-mustache_path = "assets/mustache_filter.png"
-#input_path = "smile_girl.mp4"  # "Lena.jpg"
+mask_path = "assets/mask_filter.png"
+input_path = "Face.jpg"  # "Lena.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
-mustache_img = cv2.imread(mustache_path, cv2.IMREAD_UNCHANGED)
+mask_img = cv2.imread(mask_path, cv2.IMREAD_UNCHANGED)
 
 prev_rvec = None
 prev_tvec = None
 prev_angles = None
-prev_mustache_width = None
+
 # === 얼굴 3D 모델 포인트 ===
 model_points = np.array([
     (0.0, 0.0, 0.0),           # 코 끝
@@ -77,7 +77,7 @@ def overlay_transparent(background, overlay, x, y):
     background[y1:y2, x1:x2] = blended.astype(np.uint8)
     return background
 
-def apply_mustache_filter(frame):
+def apply_mask_filter(frame, mask_img):
     global prev_rvec, prev_tvec, prev_angles
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = detector(gray)
@@ -86,105 +86,59 @@ def apply_mustache_filter(frame):
         landmarks = predictor(gray, face)
         pts = np.array([[p.x, p.y] for p in landmarks.parts()])
 
-        # ===== 2D → 3D 매핑용 포인트 =====
-        image_points = np.array([
-            pts[30],  # nose tip
-            pts[8],   # chin
-            pts[36],  # left eye outer
-            pts[45],  # right eye outer
-            pts[48],  # left mouth corner
-            pts[54],  # right mouth corner
-        ], dtype=np.float32)
-
-        h, w = frame.shape[:2]
-        cam_matrix = np.array([
-            [w, 0, w / 2],
-            [0, w, h / 2],
-            [0, 0, 1]
-        ], dtype=np.float32)
-
-        # ===== 안정적 solvePnP =====
-        if prev_rvec is None:
-            success, rvec, tvec = cv2.solvePnP(
-                model_points, image_points, cam_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE
-            )
-        else:
-            success, rvec, tvec = cv2.solvePnP(
-                model_points, image_points, cam_matrix, dist_coeffs,
-                rvec=prev_rvec, tvec=prev_tvec, useExtrinsicGuess=True,
-                flags=cv2.SOLVEPNP_ITERATIVE
-            )
-        if not success:
-            continue
-
-        # ===== 오일러 각 안정화 =====
-        pitch, yaw, roll = euler_from_rvec(rvec)
-        if prev_angles is not None:
-            prev_pitch, prev_yaw, prev_roll = prev_angles
-            alpha = 0.7
-            pitch = alpha * prev_pitch + (1 - alpha) * pitch
-            yaw   = alpha * prev_yaw   + (1 - alpha) * yaw
-            roll  = alpha * prev_roll  + (1 - alpha) * roll
-        prev_angles = (pitch, yaw, roll)
-        prev_rvec, prev_tvec = rvec.copy(), tvec.copy()
-
-        # ===== 입 기반 수염 위치 계산 =====
-        mouth_left = pts[48].astype(np.float32)
-        mouth_right = pts[54].astype(np.float32)
-        mouth_center = (mouth_left + mouth_right) / 2.0
+        # 얼굴 기준점
         nose_tip = pts[30].astype(np.float32)
-        upper_lip = pts[51].astype(np.float32)
+        chin = pts[8].astype(np.float32)
+        jaw_left = pts[4].astype(np.float32)
+        jaw_right = pts[12].astype(np.float32)
 
+        # 가면 중심 & 크기
+        mask_center = (nose_tip + chin) / 2
+        mask_width = int(np.linalg.norm(jaw_right - jaw_left) * 1.2)
+        mask_height = int(np.linalg.norm(chin - nose_tip) * 1.3)
 
-        mustache_center_2D = nose_tip * 0.20 + upper_lip * 0.80
-        mustache_center_2D[1] += 1  # 미세 조정
-        
-        global prev_mustache_width
-        # 수염 크기 조절
-        if prev_mustache_width is None:
-            mouth_width = np.linalg.norm(mouth_right - mouth_left)
-            prev_mustache_width = mouth_width * 2.0
-
-        desired_w = int(prev_mustache_width)
-        desired_h = int(desired_w * 0.4)
-
-        dx = mouth_right[0] - mouth_left[0]
-        dy = mouth_right[1] - mouth_left[1]
+        # 각도 계산 (턱 좌우)
+        dx = jaw_right[0] - jaw_left[0]
+        dy = jaw_right[1] - jaw_left[1]
         angle = np.degrees(np.arctan2(dy, dx))
 
-
-        alpha = mustache_img[:, :, 3]
+        # 마스크 자르기 및 크기 조절
+        alpha = mask_img[:, :, 3]
         ys, xs = np.where(alpha > 0)
         x_min, x_max = xs.min(), xs.max()
         y_min, y_max = ys.min(), ys.max()
-        mustache_cropped = mustache_img[y_min:y_max + 1, x_min:x_max + 1]
-        resized = cv2.resize(mustache_cropped, (desired_w, desired_h), interpolation=cv2.INTER_AREA)
+        mask_cropped = mask_img[y_min:y_max + 1, x_min:x_max + 1]
+        resized = cv2.resize(mask_cropped, (mask_width, mask_height), interpolation=cv2.INTER_AREA)
 
-        M = cv2.getRotationMatrix2D((desired_w / 2, desired_h / 2), angle, 1.0)
-        rotated = cv2.warpAffine(resized, M, (desired_w, desired_h), flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0, 0))
+        # 회전
+        M = cv2.getRotationMatrix2D((mask_width / 2, mask_height / 2), angle, 1.0)
+        rotated = cv2.warpAffine(resized, M, (mask_width, mask_height), flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0, 0))
 
-        x1 = int(mustache_center_2D[0] - desired_w / 2)
-        y1 = int(mustache_center_2D[1] - desired_h / 2)
+        # 위치 계산
+        x1 = int(mask_center[0] - mask_width / 2)
+        y1 = int(mask_center[1] - mask_height / 2)
+
+        # 합성
         frame = overlay_transparent(frame, rotated, x1, y1)
 
     return frame
 
-'''
+
 # ====== 입력 처리 ======
 ext = os.path.splitext(input_path)[1].lower()
 if ext in [".jpg", ".jpeg", ".png"]:
     img = cv2.imread(input_path)
-    result = apply_mustache_filter(img)
-    output_path = os.path.splitext(input_path)[0] + "_mustache.png"
+    result = apply_mask_filter(img,mask_img)
+    output_path = os.path.splitext(input_path)[0] + "_mask.png"
     cv2.imwrite(output_path, result)
-    cv2.imshow("AR Mustache (Image)", result)
+    cv2.imshow("AR mask (Image)", result)
     print(f"✅ 이미지 결과 저장 완료: {output_path}")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 else:
     cap = cv2.VideoCapture(input_path)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out_path = os.path.splitext(input_path)[0] + "_mustache.mp4"
+    out_path = os.path.splitext(input_path)[0] + "_mask.mp4"
     out = cv2.VideoWriter(out_path, fourcc, cap.get(cv2.CAP_PROP_FPS),
                           (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
@@ -192,13 +146,12 @@ else:
         ret, frame = cap.read()
         if not ret:
             break
-        result = apply_mustache_filter(frame)
+        result = apply_mask_filter(frame, mask_img)
         out.write(result)
-        cv2.imshow("AR Mustache (Video)", result)
+        cv2.imshow("AR Mask (Video)", result)
         if cv2.waitKey(1) == 27:  # ESC
             break
     cap.release()
     out.release()
     cv2.destroyAllWindows()
     print(f"✅ 영상 결과 저장 완료: {out_path}")
-'''

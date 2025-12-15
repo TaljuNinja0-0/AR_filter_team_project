@@ -6,7 +6,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 filter_path = "assets/carnivalmask_filter.png"
-input_path = "smile_girl2.mp4" #"Lena.jpg"
+#input_path = "smile_girl3.mp4" #"Lena.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -181,6 +181,7 @@ def apply_carnivalmask_filter(frame):
 
     return frame
 
+'''
 # ====== 입력 처리 ======
 ext = os.path.splitext(input_path)[1].lower()
 if ext in [".jpg", ".jpeg", ".png"]:
@@ -212,3 +213,4 @@ else:
     out.release()
     cv2.destroyAllWindows()
     print(f"✅ 영상 결과 저장 완료: {out_path}")
+'''

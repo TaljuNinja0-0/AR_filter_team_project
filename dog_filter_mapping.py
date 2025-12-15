@@ -7,7 +7,7 @@ import os
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 ear_path = "assets/dog_filter_1.png"
 nose_path = "assets/dog_filter_2.png"
-input_path = "woman.jpg"
+#input_path = "woman.jpg"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -194,6 +194,7 @@ def apply_dog_filter(frame):
 
     return frame
 
+'''
 # ====== 입력 처리 ======
 ext = os.path.splitext(input_path)[1].lower()
 if ext in [".jpg", ".jpeg", ".png"]:
@@ -225,3 +226,4 @@ else:
     out.release()
     cv2.destroyAllWindows()
     print(f"✅ 영상 결과 저장 완료: {out_path}")
+'''
