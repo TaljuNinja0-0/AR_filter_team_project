@@ -132,7 +132,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_07": ['image', 'video'],  # 강아지
             "filter_bnt_08": ['image', 'video'],  # 고양이
             "filter_bnt_09": ['image', 'video'],  # 토끼 
-            "filter_bnt_10": ['image', 'video'],  # 산타
+            "filter_bnt_10": ['image', 'video'],  # 산타A
             "filter_bnt_11": ['image', 'video'],  # 무대 가면
             "filter_bnt_12": ['image', 'video'],  # 콧수염
             "filter_bnt_13": ['image', 'video'],  # 흰 마스크
@@ -335,6 +335,15 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             # 메뉴 닫힘 (버튼이 풀린 상태): 스크롤 영역 숨기기 + 캡처/녹화
             self.filter_scroll_area.setVisible(False)
             print("필터 메뉴 닫힘 및 캡처/녹화 시도")
+
+            # 필터가 선택되지 않았으면 저장/캡쳐 안 함
+            if self.current_filter is None:
+                QMessageBox.warning(
+                    self,
+                    "필터 미선택",
+                    "필터를 선택한 후 저장/캡쳐할 수 있습니다."
+                )
+                return
             
             # 미디어 타입에 따라 캡처 또는 저장
             if self.media_type == 'image':
@@ -387,6 +396,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # 현재 프레임을 캡처하여 파일로 저장 (사진 모드)
         if self.current_frame is None: 
             print("캡처할 프레임이 없습니다.")
+            QMessageBox.warning(self, "캡처 실패")
             return
         
         processed_frame = self.apply_ar_filter(self.current_frame.copy(), self.current_filter)
@@ -394,24 +404,58 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
         filename = f"capture_{timestamp}.png"
         
-        cv2.imwrite(filename, processed_frame)
-        print(f"사진 저장됨: {filename}")
+        # 파일 저장
+        success = cv2.imwrite(filename, processed_frame)
+        
+        if success:
+            print(f"사진 저장됨: {filename}")
+            
+            # 저장 완료 팝업
+            QMessageBox.information(
+                self,
+                "저장 완료",
+                f"사진이 저장되었습니다.\n파일명: {filename}"
+            )
+        else:
+            print(f"사진 저장 실패: {filename}")
+            QMessageBox.warning(
+                self,
+                "저장 실패",
+                f"사진 저장에 실패했습니다."
+            )
 
     def save_entire_video(self):
         """불러온 영상 전체에 필터를 적용하여 저장 (영상 모드)"""
         if self.cap is None or not self.cap.isOpened():
             print("저장할 영상이 없습니다.")
+            QMessageBox.warning(self, "저장 실패", "저장할 영상이 없습니다.")
             return
         
         if self.loaded_file_path is None:
             print("카메라 모드에서는 전체 영상 저장이 불가능합니다.")
+            QMessageBox.warning(
+                self,
+                "저장 불가",
+                "카메라 모드에서는 전체 영상 저장이 불가능합니다."
+            )
             return
+            
+        # 저장 중 팝업 표시 (non-blocking)
+        progress_msg = QMessageBox(self)
+        progress_msg.setWindowTitle("저장 중")
+        progress_msg.setText("영상 전체에 필터를 적용하는 중입니다.\n잠시만 기다려주세요...")
+        progress_msg.setStandardButtons(QMessageBox.StandardButton.NoButton)
+        progress_msg.setModal(False)
+        progress_msg.show()
+        
+        # UI 업데이트 강제 실행
+        QApplication.processEvents()
         
         print("영상 전체에 필터 적용 중... 잠시만 기다려주세요.")
         
         # 현재 재생 위치 저장
         current_pos = self.cap.get(cv2.CAP_PROP_POS_FRAMES)
-        
+    
         # 영상 정보 가져오기
         fps = self.cap.get(cv2.CAP_PROP_FPS)
         width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -429,7 +473,10 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # 처음부터 다시 읽기
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
         
+        # 변수 초기화
         frame_count = 0
+        last_progress = -1
+        
         while True:
             ret, frame = self.cap.read()
             if not ret:
@@ -443,18 +490,35 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             
             frame_count += 1
             
-            # 진행 상황 출력 (10% 단위)
-            if frame_count % max(1, total_frames // 10) == 0:
-                progress = (frame_count / total_frames) * 100
-                print(f"진행 중... {progress:.0f}%")
+            # 진행 상황 업데이트 (10% 단위)
+            current_progress = int((frame_count / total_frames) * 100)
+            if current_progress != last_progress and current_progress % 10 == 0:
+                progress_msg.setText(
+                    f"필터를 적용하는 중입니다."
+                )
+                QApplication.processEvents()
+                last_progress = current_progress
+                print(f"진행 중... {current_progress}%")
         
         out.release()
         
         # 원래 위치로 복원
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, current_pos)
         
+        # 저장 중 팝업 닫기 (강제로 숨기고 삭제)
+        progress_msg.hide()
+        progress_msg.deleteLater()
+        QApplication.processEvents()  # UI 업데이트 강제 실행
+        
         print(f"영상 저장 완료: {filename}")
         print(f"총 {frame_count} 프레임 처리됨")
+        
+        # 저장 완료 팝업
+        QMessageBox.information(
+            self,
+            "저장 완료",
+            f"영상이 저장되었습니다.\n파일명: {filename}"
+        )
 
     def start_recording(self):
         # 영상 녹화 시작(영상 모드)
