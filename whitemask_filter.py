@@ -95,13 +95,13 @@ def apply_whitemask_filter(frame):
         jaw_right = pts[16].astype(np.float32) # 오른쪽 얼굴 끝
         # ===== 가면 중심 & 크기 =====
         mask_center = pts[28]
-        mask_width = int(np.linalg.norm(jaw_right - jaw_left) * 2.8)  # 약간 여유
-        mask_height = int(np.linalg.norm(chin - forehead) * 2.8)  
+        mask_width = int(np.linalg.norm(jaw_right - jaw_left) * 2.5)  # 약간 여유
+        mask_height = int(np.linalg.norm(chin - forehead) * 2.5)  
 
         # ===== 각도 계산 =====
         dx = jaw_right[0] - jaw_left[0]
         dy = jaw_right[1] - jaw_left[1]
-        angle = np.degrees(np.arctan2(dy, dx))
+        angle = -np.degrees(np.arctan2(dy, dx))
 
         # ===== PNG 자르기 & 크기 조절 =====
         alpha = whitemask_img[:, :, 3]
