@@ -14,10 +14,18 @@ import numpy as np
 from ui_AR_Filter import Ui_MainWindow
 
 # filter import
-from Distort_augmented_filter import apply_filter as Distorted_filter
-from Glitch_filter_mapping import apply_filter as Glitch_filter
-from camera_filter import apply_camera_filter as camera_filter
-from vintage_filter import apply_vintage_filter as vintage_filter
+from Distort_augmented_filter import apply_filter as Distorted_filter # 왜곡 필터
+from Glitch_filter_mapping import apply_filter as Glitch_filter # 글리치 필터
+from camera_filter import apply_camera_filter as camera_filter # 카메라 필터
+from vintage_filter import apply_vintage_filter as vintage_filter # 빈티지 필터
+from glasses_filter_mapping import apply_glasses_filter as glasses_filter # 안경 필터
+from monocle_filter_mapping import apply_monocle_filter as monocle_filter # 모노클 필터
+from dog_filter_mapping import apply_dog_filter as dog_filter # 강아지 필터
+from cat_filter_mapping import apply_cat_filter as cat_filter # 고양이 필터
+from bunny_filter_mapping import apply_bunny_filter as bunny_filter # 토끼 필터
+from carnivalmask_filter_mapping import apply_carnivalmask_filter as carnivalmask_filter # 무대 가면 필터
+from mustache_filter import apply_mustache_filter as mustache_filter # 콧수염 필터
+from whitemask_filter import apply_whitemask_filter as whitemask_filter # 흰 마스크 필터
 
 
 # 에플리케이션 메인 윈도우 클래스
@@ -43,7 +51,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # 윈도우 창 최대화
         self.showMaximized() # 사용자가 크기 조절 가능.
 
-        # QPushButton (필터 버튼)을 필터링합니다.
+        # QPushButton (필터 버튼)을 필터링.
         self.filter_buttons = {
             self.filter_bnt_01: "filter_bnt_01",
             self.filter_bnt_02: "filter_bnt_02",
@@ -65,20 +73,20 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             self.filter_bnt_18: "filter_bnt_18"
             }
         
-        self.filter_icons = {
+        self.filter_icons = { # 아이콘 매핑
             "filter_bnt_01": "icons/filter_01.png",  # 왜곡 필터 아이콘
-            "filter_bnt_02": "icons/filter_02.png",
-            "filter_bnt_03": "icons/filter_03.png",
-            "filter_bnt_04": "icons/filter_04.png",
-            "filter_bnt_05": "icons/filter_05.png",
-            "filter_bnt_06": "icons/filter_06.png",
-            "filter_bnt_07": "icons/filter_07.png",
-            "filter_bnt_08": "icons/filter_08.png",
-            "filter_bnt_09": "icons/filter_09.png",
-            "filter_bnt_10": "icons/filter_10.png",
-            "filter_bnt_11": "icons/filter_11.png",
-            "filter_bnt_12": "icons/filter_12.png",
-            "filter_bnt_13": "icons/filter_13.png",
+            "filter_bnt_02": "icons/filter_02.png",  # 글리치
+            "filter_bnt_03": "icons/filter_03.png",  # 카메라
+            "filter_bnt_04": "icons/filter_04.png",  # 빈티지
+            "filter_bnt_05": "icons/filter_05.png",  # 안경
+            "filter_bnt_06": "icons/filter_06.png",  # 모노클
+            "filter_bnt_07": "icons/filter_07.png",  # 강아지
+            "filter_bnt_08": "icons/filter_08.png",  # 고양이
+            "filter_bnt_09": "icons/filter_09.png",  # 토끼 
+            "filter_bnt_10": "icons/filter_10.png",  # 무대 가면
+            "filter_bnt_11": "icons/filter_11.png",  # 콧수염
+            "filter_bnt_12": "icons/filter_12.png",  # 흰 마스크
+            "filter_bnt_13": "icons/filter_13.png",  # 산타A
             #"filter_bnt_14": None,
             #"filter_bnt_15": "icons/filter_15.png",
             #"filter_bnt_16": "icons/filter_16.png",
@@ -114,10 +122,18 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # === 필터 설정 ===
         # 각 필터별 함수 연결
         self.filter_map = {
-            "filter_bnt_01": Distorted_filter,
-            "filter_bnt_02": Glitch_filter,
-            "filter_bnt_03": camera_filter,
-            "filter_bnt_04": vintage_filter,
+            "filter_bnt_01": Distorted_filter, # 왜곡
+            "filter_bnt_02": Glitch_filter, # 그리치
+            "filter_bnt_03": camera_filter, # 카메라
+            "filter_bnt_04": vintage_filter, # 빈티지
+            "filter_bnt_05": glasses_filter, # 안경
+            "filter_bnt_06": monocle_filter, # 모노클
+            "filter_bnt_07": dog_filter, # 강아지
+            "filter_bnt_08": cat_filter, # 고양이
+            "filter_bnt_09": bunny_filter, # 토끼
+            "filter_bnt_10": carnivalmask_filter, # 무대 가면
+            "filter_bnt_11": mustache_filter, # 콧수염
+            "filter_bnt_12": whitemask_filter, # 흰 마스크
             # "filter_bnt_02": other_filter,
         }
         
@@ -132,13 +148,13 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_07": ['image', 'video'],  # 강아지
             "filter_bnt_08": ['image', 'video'],  # 고양이
             "filter_bnt_09": ['image', 'video'],  # 토끼 
-            "filter_bnt_10": ['image', 'video'],  # 산타A
-            "filter_bnt_11": ['image', 'video'],  # 무대 가면
-            "filter_bnt_12": ['image', 'video'],  # 콧수염
-            "filter_bnt_13": ['image', 'video'],  # 흰 마스크
-            "filter_bnt_14": ['video'],  # 하트 필터
-            "filter_bnt_15": ['video'],  # 불 필터
-            "filter_bnt_16": ['image', 'video'],
+            "filter_bnt_10": ['image', 'video'],  # 무대 가면
+            "filter_bnt_11": ['image', 'video'],  # 콧수염
+            "filter_bnt_12": ['image', 'video'],  # 흰 마스크
+            "filter_bnt_13": ['image', 'video'],  # 하트 필터
+            "filter_bnt_14": ['video'],  # 불 필터
+            "filter_bnt_15": ['video'],  # 
+            "filter_bnt_16": ['image', 'video'], #산타A
             "filter_bnt_17": ['image'],
             "filter_bnt_18": ['video'],
         }
