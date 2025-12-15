@@ -1,7 +1,7 @@
 import sys
 import os
 # PySide6 모듈
-from PySide6.QtWidgets import (QApplication, QMainWindow, QFileDialog, QPushButton, QVBoxLayout)
+from PySide6.QtWidgets import (QApplication, QMainWindow, QFileDialog, QPushButton, QVBoxLayout, QMessageBox)
 from PySide6.QtCore import (QTimer, Qt, QDateTime, QSize)
 from PySide6.QtGui import (QImage, QPixmap, QIcon)
 
@@ -24,6 +24,16 @@ from vintage_filter import apply_vintage_filter as vintage_filter
 class ARFilterApp(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
+
+        # === 상태 변수 초기화 ===
+        self.cap = None  # cv2.VideoCapture 객체
+        self.current_filter = None # 현재 적용 필터 (예: "filter1", "none")
+        self.media_type = None  # 'video' 또는 'image'
+        self.loaded_file_path = None  # 불러온 파일 경로
+        self.video_writer = None  # 영상 저장용 VideoWriter
+        self.is_recording = False  # 녹화 중인지 여부
+        self.recorded_frames = []  # 녹화된 프레임 저장
+        self.current_frame = None  # 사진용 현재 프레임 저장
         
         # UI 로드 (디자인 적용)
         self.setupUi(self)
@@ -78,21 +88,8 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
 
         # === UI  ===
         self.fix_ui_issues()
-
-        # === 상태 변수 초기화 ===
-        self.cap = None  # cv2.VideoCapture 객체
-        self.current_filter = None # 현재 적용 필터 (예: "filter1", "none")
-        self.media_type = None  # 'video' 또는 'image'
-        self.loaded_file_path = None  # 불러온 파일 경로
-        self.video_writer = None  # 영상 저장용 VideoWriter
-        self.is_recording = False  # 녹화 중인지 여부
-        self.recorded_frames = []  # 녹화된 프레임 저장
         
-        # === 필터 버튼 목록 (QScrollArea에서 동적으로 가져오기) ===
-        content_widget = self.filter_scroll_area.widget()
-
         # === 초기 UI 설정 ===
-        # 필터 버튼 숨기기
         self.filter_scroll_area.setVisible(False) 
         self.video_display_label.setText("")
         
@@ -106,7 +103,6 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
 
         # 필터 버튼 연결 
         for button in self.filter_buttons:
-            # 버튼 이름에서 필터 ID를 select_filter에 전달
             filter_id = button.objectName()
             button.clicked.connect(lambda checked, fid=filter_id: self.select_filter(fid))
         
@@ -217,16 +213,13 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
 
 
     def resizeEvent(self, event):
-        """창 크기 변경 시 스크롤 영역 높이 조정"""
         super().resizeEvent(event)
         
         # 중앙 위젯의 높이 가져오기
         available_height = self.centralwidget.height()
-        
-        # 메뉴 토글 버튼 높이 + 여백 고려
-        button_height = self.menu_toggle_button.height()
         top_margin = 60  # 버튼 아래 시작 위치
         bottom_margin = 20  # 하단 여백
+       # button_height = self.menu_toggle_button.height()
         
         # 스크롤 영역 높이 계산
         new_height = available_height - top_margin - bottom_margin
@@ -243,6 +236,9 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             current_geometry.width(),
             new_height
         )
+
+        if self.media_type == 'image' and self.current_frame is not None:
+            self.update_image_display()
 
     def update_filter_buttons_state(self):
         """현재 미디어 타입에 따라 필터 버튼 활성화/비활성화"""
@@ -261,11 +257,19 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
                 supported_types = self.filter_media_support[button_name]
                 
                 if self.media_type in supported_types:
-                    # 지원하는 경우: 활성화
+                    # 활성화
                     button.setEnabled(True)
-                    button.setStyleSheet("border-radius: 25px; background-color: white;")
+                    # 현재 선택된 필터면 강조
+                    if button_name == self.current_filter:
+                        button.setStyleSheet("""
+                            border-radius: 25px;
+                            background-color: #87CEEB;
+                            border: 3px solid #4682B4;
+                        """)
+                    else:
+                        button.setStyleSheet("border-radius: 25px; background-color: white;")
                 else:
-                    # 지원하지 않는 경우: 비활성화
+                    # 비활성화
                     button.setEnabled(False)
                     button.setStyleSheet("border-radius: 25px; background-color: #CCCCCC;")  # 회색
             else:
@@ -307,6 +311,9 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             print("카메라 모드")
 
         if self.cap.isOpened():
+            # 새 미디어 로드 시 필터 자동 해제
+            self.current_filter = None
+
             self.timer.start(30) # 30ms 마다 프레임 업데이트 시작
             print("미디어 로드 및 타이머 시작")
             
@@ -319,8 +326,6 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
     
     def toggle_filter_menu(self, is_checked):
         # 버튼 클릭 > 필터 버튼 띄움 > 버튼 한번 더 클릭 > 캡쳐 및 닫힘
-        """메인 버튼 토글 시 스크롤 영역을 토글하고, 닫힐 때는 캡처를 실행합니다."""
-        
         if is_checked:
             # 메뉴 열림 (버튼이 눌린 상태): 스크롤 영역 보이기
             self.filter_scroll_area.setVisible(True)
@@ -331,42 +336,125 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             self.filter_scroll_area.setVisible(False)
             print("필터 메뉴 닫힘 및 캡처/녹화 시도")
             
-            # 미디어 타입에 따라 캡처 또는 녹화 시작/중지
+            # 미디어 타입에 따라 캡처 또는 저장
             if self.media_type == 'image':
                 self.capture_photo()
             elif self.media_type == 'video':
-                if not self.is_recording:
-                    self.start_recording()
-                else:
-                    self.stop_recording()
+                self.save_entire_video()
         
     def select_filter(self, filter_name):
         #필터 버튼 클릭 시 현재 필터 적용 / 메뉴 열린 상태 유지
-        self.current_filter = filter_name
+        # 같은 필터를 다시 누르면 해제
+        if self.current_filter == filter_name:
+            self.current_filter = None
+            print(f"필터 해제됨: {filter_name}")
+        else:
+            self.current_filter = filter_name
+            print(f"필터 선택됨: {filter_name}")
         
-        print(f"필터 선택됨: {filter_name}")
+        # 버튼 상태 업데이트 (선택된 버튼 강조)
+        self.update_filter_buttons_state()
+        
+        # 사진 모드일 때 즉시 화면 업데이트
+        if self.media_type == 'image' and self.current_frame is not None:
+            self.update_image_display()
+
+    def update_image_display(self):
+        # 사진 모드에서 필터 적용 후 즉시 화면 업데이트
+        if self.current_frame is None:
+            return
+        
+        # 필터 적용
+        processed_frame = self.apply_ar_filter(self.current_frame.copy(), self.current_filter)
+        
+        # 화면에 표시
+        height, width, channel = processed_frame.shape
+        bytes_per_line = 3 * width
+        
+        rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+        q_image = QImage(rgb_frame.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+        q_pixmap = QPixmap.fromImage(q_image)
+        
+        scaled_pixmap = q_pixmap.scaled(
+            self.video_display_label.size(), 
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        
+        self.video_display_label.setPixmap(scaled_pixmap)
 
     def capture_photo(self):
         # 현재 프레임을 캡처하여 파일로 저장 (사진 모드)
-        if self.cap is None or not self.cap.isOpened():
-            print("캡처할 미디어가 없습니다.")
+        if self.current_frame is None: 
+            print("캡처할 프레임이 없습니다.")
             return
         
-        ret, frame = self.cap.read()
+        processed_frame = self.apply_ar_filter(self.current_frame.copy(), self.current_filter)
         
-        if ret:
-            # 현재 필터를 적용한 프레임 가져오기
-            processed_frame = self.apply_ar_filter(frame, self.current_filter)
+        timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
+        filename = f"capture_{timestamp}.png"
+        
+        cv2.imwrite(filename, processed_frame)
+        print(f"사진 저장됨: {filename}")
+
+    def save_entire_video(self):
+        """불러온 영상 전체에 필터를 적용하여 저장 (영상 모드)"""
+        if self.cap is None or not self.cap.isOpened():
+            print("저장할 영상이 없습니다.")
+            return
+        
+        if self.loaded_file_path is None:
+            print("카메라 모드에서는 전체 영상 저장이 불가능합니다.")
+            return
+        
+        print("영상 전체에 필터 적용 중... 잠시만 기다려주세요.")
+        
+        # 현재 재생 위치 저장
+        current_pos = self.cap.get(cv2.CAP_PROP_POS_FRAMES)
+        
+        # 영상 정보 가져오기
+        fps = self.cap.get(cv2.CAP_PROP_FPS)
+        width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        # 파일명 생성
+        timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
+        filename = f"filtered_{timestamp}.mp4"
+        
+        # VideoWriter 생성
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
+        
+        # 처음부터 다시 읽기
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        
+        frame_count = 0
+        while True:
+            ret, frame = self.cap.read()
+            if not ret:
+                break
             
-            # 파일명 생성 (현재 시간 기반)
-            timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
-            filename = f"capture_{timestamp}.png"
+            # 필터 적용
+            processed_frame = self.apply_ar_filter(frame.copy(), self.current_filter)
             
             # 저장
-            cv2.imwrite(filename, processed_frame)
-            print(f"사진 저장됨: {filename}")
-        else:
-            print("프레임을 읽을 수 없습니다.")
+            out.write(processed_frame)
+            
+            frame_count += 1
+            
+            # 진행 상황 출력 (10% 단위)
+            if frame_count % max(1, total_frames // 10) == 0:
+                progress = (frame_count / total_frames) * 100
+                print(f"진행 중... {progress:.0f}%")
+        
+        out.release()
+        
+        # 원래 위치로 복원
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, current_pos)
+        
+        print(f"영상 저장 완료: {filename}")
+        print(f"총 {frame_count} 프레임 처리됨")
 
     def start_recording(self):
         # 영상 녹화 시작(영상 모드)
@@ -404,10 +492,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         print(f"영상 저장됨: {filename}")
 
     def apply_ar_filter(self, frame, filter_name):
-        """
-        [핵심 AR 로직]
-        OpenCV와 Dlib을 사용하여 프레임에 AR 필터를 적용하는 함수입니다.
-        """
+        """AR 필터를 적용"""
         if filter_name in self.filter_map:
             return self.filter_map[filter_name](frame)
         
@@ -417,6 +502,14 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         ret, frame = self.cap.read()
         
         if ret:
+            # 사진 모드일 때 현재 프레임 저장 및 초기화
+            if self.media_type == 'image':
+                self.current_frame = frame.copy()
+                self.timer.stop()
+
+                self.update_image_display() 
+                return
+
             # 1. AR 필터 적용
             processed_frame = self.apply_ar_filter(frame.copy(), self.current_filter)
             
@@ -443,16 +536,19 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             self.video_display_label.setPixmap(scaled_pixmap)
 
         else:
-            # 영상이 끝났을 때
-            if self.media_type == 'image':
-                # 사진 모드: 프레임을 계속 유지
-                pass
-            else:
-                # 영상 모드: 정지
-                self.timer.stop()
+            if self.media_type == 'video' and self.loaded_file_path is not None:
+                # 영상 파일이 끝에 도달했을 때 (반복 재생 로직)
+                
                 if self.is_recording:
                     self.stop_recording()
-                print("미디어 스트림 종료")
+                
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                
+            elif self.media_type == 'video' and self.loaded_file_path is None:
+                # 카메라 모드 오류/종료 시
+                self.timer.stop()
+                print("카메라 스트림 종료 또는 오류 발생")
+
 
 
 def run_app():
