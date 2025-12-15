@@ -13,11 +13,25 @@ import numpy as np
 # 변환된 UI 파일에서 클래스를 import. (ui_AR_Filter.py)
 from ui_AR_Filter import Ui_MainWindow
 
-# filter import
-from Distort_augmented_filter import apply_filter as Distorted_filter
-from Glitch_filter_mapping import apply_filter as Glitch_filter
-from camera_filter import apply_camera_filter as camera_filter
-from vintage_filter import apply_vintage_filter as vintage_filter
+from Distort_augmented_filter import apply_filter as Distorted_filter # 왜곡 필터
+from Glitch_filter_mapping import apply_filter as Glitch_filter # 글리치 필터
+from camera_filter import apply_camera_filter as camera_filter # 카메라 필터
+from vintage_filter import apply_vintage_filter as vintage_filter # 빈티지 필터
+from glasses_filter_mapping import apply_glasses_filter as glasses_filter # 안경 필터
+from monocle_filter_mapping import apply_monocle_filter as monocle_filter # 모노클 필터
+from dog_filter_mapping import apply_dog_filter as dog_filter # 강아지 필터
+from cat_filter_mapping import apply_cat_filter as cat_filter # 고양이 필터
+from bunny_filter_mapping import apply_bunny_filter as bunny_filter # 토끼 필터
+from carnivalmask_filter_mapping import apply_carnivalmask_filter as carnivalmask_filter # 무대 가면 필터
+from mustache_filter import apply_mustache_filter as mustache_filter # 콧수염 필터
+from whitemask_filter import apply_whitemask_filter as whitemask_filter # 흰 마스크 필터
+from santa_filter import apply_santa_filter_optimized as santa_filter # 산타 필터
+from sunglass_filter_mapping import apply_sunglass_filter as sunglasses_filter # 선글라스 필터
+from mask_filter import apply_mask_filter as mask_filter # 마스크 필터
+from reaction_fire_filter import apply_fire_filter as fire_filter # 불 필터
+from Eye_gaze_tracker import apply_eye_laser_filter as eye_laser_filter # 시선 트랙킹 필터
+from afterimage_filter import apply_ghost_filter as afterimage_filter # 잔상 필터
+from reaction_heart_filter import apply_heart_filter as heart_filter # 하트 필터
 
 
 # 에플리케이션 메인 윈도우 클래스
@@ -34,16 +48,25 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         self.is_recording = False  # 녹화 중인지 여부
         self.recorded_frames = []  # 녹화된 프레임 저장
         self.current_frame = None  # 사진용 현재 프레임 저장
-        
+
         # UI 로드 (디자인 적용)
         self.setupUi(self)
-        
-        self.setWindowTitle("AR Filter Program")
+
+        self.setWindowTitle("AR Filter")
+
+        # 윈도우 아이콘 설정
+        icon_path = "icons/Icon_app.png"
+
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+            print(f"윈도우 아이콘 설정됨: {icon_path}")
+        else:
+            print(f"경고: 아이콘 파일 '{icon_path}'을 찾을 수 없습니다. 기본 아이콘을 사용합니다.")
 
         # 윈도우 창 최대화
         self.showMaximized() # 사용자가 크기 조절 가능.
 
-        # QPushButton (필터 버튼)을 필터링합니다.
+        # QPushButton (필터 버튼)을 필터링.
         self.filter_buttons = {
             self.filter_bnt_01: "filter_bnt_01",
             self.filter_bnt_02: "filter_bnt_02",
@@ -63,10 +86,31 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             self.filter_bnt_16: "filter_bnt_16",
             self.filter_bnt_17: "filter_bnt_17",
             self.filter_bnt_18: "filter_bnt_18"
-            }
-        
+        }
+
+        self.filter_names = {
+            "filter_bnt_01": "Distorted_filter",
+            "filter_bnt_02": "Glitch_filter",
+            "filter_bnt_03": "camera_filter",
+            "filter_bnt_04": "vintage_filter",
+            "filter_bnt_05": "glasses_filter",
+            "filter_bnt_06": "monocle_filter",
+            "filter_bnt_07": "dog_filter",
+            "filter_bnt_08": "cat_filter",
+            "filter_bnt_09": "bunny_filter",
+            "filter_bnt_10": "carnivalmask_filter",
+            "filter_bnt_11": "mustache_filter",
+            "filter_bnt_12": "whitemask_filter",
+            "filter_bnt_13": "heart_filter",
+            "filter_bnt_14": "sunglasses_filter",
+            "filter_bnt_15": "mask_filter",
+            "filter_bnt_16": "fire_filter",
+            "filter_bnt_17": "eye_laser_filter",
+            "filter_bnt_18": "afterimage_filter"
+        }
+
         self.filter_icons = {
-            "filter_bnt_01": "icons/filter_01.png",  # 왜곡 필터 아이콘
+            "filter_bnt_01": "icons/filter_01.png",
             "filter_bnt_02": "icons/filter_02.png",
             "filter_bnt_03": "icons/filter_03.png",
             "filter_bnt_04": "icons/filter_04.png",
@@ -79,11 +123,79 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_11": "icons/filter_11.png",
             "filter_bnt_12": "icons/filter_12.png",
             "filter_bnt_13": "icons/filter_13.png",
-            #"filter_bnt_14": None,
-            #"filter_bnt_15": "icons/filter_15.png",
-            #"filter_bnt_16": "icons/filter_16.png",
-            #"filter_bnt_17": "icons/filter_17.png",
-            #filter_bnt_18": "icons/filter_18.png",
+            "filter_bnt_14": "icons/filter_14.png",
+            "filter_bnt_15": "icons/filter_15.png",
+            "filter_bnt_16": "icons/filter_16.png",
+            "filter_bnt_17": "icons/filter_17.png",
+            "filter_bnt_18": "icons/filter_18.png",
+        }
+
+        # === UI  ===
+        self.fix_ui_issues()
+
+        # === 초기 UI 설정 ===
+        self.filter_scroll_area.setVisible(False)
+        self.video_display_label.setText("")
+
+        # === 이벤트 연결 ===
+
+        # 메뉴바: 영상/사진 불러오기 액션 연결
+        self.action_load_media.triggered.connect(self.load_media_file)
+
+        # 메뉴 토글 버튼 연결
+        self.menu_toggle_button.toggled.connect(self.toggle_filter_menu)
+
+        # 필터 버튼 연결
+        for button in self.filter_buttons:
+            filter_id = button.objectName()
+            button.clicked.connect(lambda checked, fid=filter_id: self.select_filter(fid))
+
+        # === OpenCV 타이머 설정 ===
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_frame)
+        # self.timer.start(30) 은 미디어를 로드할 때 시작합니다.
+
+        # === 필터 설정 ===
+        self.filter_map = {
+            "filter_bnt_01": Distorted_filter,
+            "filter_bnt_02": Glitch_filter,
+            "filter_bnt_03": camera_filter,
+            "filter_bnt_04": vintage_filter,
+            "filter_bnt_05": glasses_filter,
+            "filter_bnt_06": monocle_filter,
+            "filter_bnt_07": dog_filter,
+            "filter_bnt_08": cat_filter,
+            "filter_bnt_09": bunny_filter,
+            "filter_bnt_10": carnivalmask_filter,
+            "filter_bnt_11": mustache_filter,
+            "filter_bnt_12": whitemask_filter,
+            "filter_bnt_13": heart_filter,
+            "filter_bnt_14": sunglasses_filter,
+            "filter_bnt_15": mask_filter,
+            "filter_bnt_16": fire_filter,
+            "filter_bnt_17": eye_laser_filter,
+            "filter_bnt_18": afterimage_filter,
+        }
+
+        self.filter_media_support = {
+            "filter_bnt_01": ['image', 'video'],
+            "filter_bnt_02": ['image', 'video'],
+            "filter_bnt_03": ['video'],
+            "filter_bnt_04": ['video'],
+            "filter_bnt_05": ['image', 'video'],
+            "filter_bnt_06": ['image', 'video'],
+            "filter_bnt_07": ['image', 'video'],
+            "filter_bnt_08": ['image', 'video'],
+            "filter_bnt_09": ['image', 'video'],
+            "filter_bnt_10": ['image', 'video'],
+            "filter_bnt_11": ['image', 'video'],
+            "filter_bnt_12": ['image', 'video'],
+            "filter_bnt_13": ['video'],
+            "filter_bnt_14": ['image', 'video'],
+            "filter_bnt_15": ['image', 'video'],
+            "filter_bnt_16": ['video'],
+            "filter_bnt_17": ['video'],
+            "filter_bnt_18": ['video'],
         }
 
         # === UI  ===
@@ -114,35 +226,47 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # === 필터 설정 ===
         # 각 필터별 함수 연결
         self.filter_map = {
-            "filter_bnt_01": Distorted_filter,
-            "filter_bnt_02": Glitch_filter,
-            "filter_bnt_03": camera_filter,
-            "filter_bnt_04": vintage_filter,
-            # "filter_bnt_02": other_filter,
-        }
-        
-        # 각 필터별 사용 가능한 미디어 타입 설정
-        self.filter_media_support = {
-            "filter_bnt_01": ['image', 'video'],  # Distorted_filter
-            "filter_bnt_02": ['image', 'video'],  # Glitch_filter
-            "filter_bnt_03": ['video'],  # camera_filter
-            "filter_bnt_04": ['video'],  # vintage_filter
-            "filter_bnt_05": ['image', 'video'],  # 안경
-            "filter_bnt_06": ['image', 'video'],  # 모노클
-            "filter_bnt_07": ['image', 'video'],  # 강아지
-            "filter_bnt_08": ['image', 'video'],  # 고양이
-            "filter_bnt_09": ['image', 'video'],  # 토끼 
-            "filter_bnt_10": ['image', 'video'],  # 산타A
-            "filter_bnt_11": ['image', 'video'],  # 무대 가면
-            "filter_bnt_12": ['image', 'video'],  # 콧수염
-            "filter_bnt_13": ['image', 'video'],  # 흰 마스크
-            "filter_bnt_14": ['video'],  # 하트 필터
-            "filter_bnt_15": ['video'],  # 불 필터
-            "filter_bnt_16": ['image', 'video'],
-            "filter_bnt_17": ['image'],
-            "filter_bnt_18": ['video'],
+            "filter_bnt_01": Distorted_filter, # 왜곡
+            "filter_bnt_02": Glitch_filter, # 그리치
+            "filter_bnt_03": camera_filter, # 카메라
+            "filter_bnt_04": vintage_filter, # 빈티지
+            "filter_bnt_05": glasses_filter, # 안경
+            "filter_bnt_06": monocle_filter, # 모노클
+            "filter_bnt_07": dog_filter, # 강아지
+            "filter_bnt_08": cat_filter, # 고양이
+            "filter_bnt_09": bunny_filter, # 토끼
+            "filter_bnt_10": carnivalmask_filter, # 무대 가면
+            "filter_bnt_11": mustache_filter, # 콧수염
+            "filter_bnt_12": whitemask_filter, # 흰 마스크
+            "filter_bnt_13": heart_filter, # 하트
+            "filter_bnt_14": sunglasses_filter, # 선글라스
+            "filter_bnt_15": mask_filter, # 마스크
+            "filter_bnt_16": fire_filter, # 불
+            "filter_bnt_17": eye_laser_filter, # 시선 트랙킹
+            "filter_bnt_18": afterimage_filter, # 잔상
         }
 
+        # 각 필터별 사용 가능한 미디어 타입 설정
+        self.filter_media_support = {
+            "filter_bnt_01": ['image', 'video'],
+            "filter_bnt_02": ['image', 'video'],
+            "filter_bnt_03": ['video'],
+            "filter_bnt_04": ['video'],
+            "filter_bnt_05": ['image', 'video'],
+            "filter_bnt_06": ['image', 'video'],
+            "filter_bnt_07": ['image', 'video'],
+            "filter_bnt_08": ['image', 'video'],
+            "filter_bnt_09": ['image', 'video'],
+            "filter_bnt_10": ['image', 'video'],
+            "filter_bnt_11": ['image', 'video'],
+            "filter_bnt_12": ['image', 'video'],
+            "filter_bnt_13": ['video'],
+            "filter_bnt_14": ['image', 'video'],
+            "filter_bnt_15": ['image', 'video'],
+            "filter_bnt_16": ['video'],
+            "filter_bnt_17": ['video'],
+            "filter_bnt_18": ['video'],
+        }
 
     def fix_ui_issues(self):
         # 비디오 비율 유지
@@ -401,8 +525,14 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         
         processed_frame = self.apply_ar_filter(self.current_frame.copy(), self.current_filter)
         
-        timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
-        filename = f"capture_{timestamp}.png"
+        original_filename = os.path.basename(self.loaded_file_path)
+        filename_without_ext = os.path.splitext(original_filename)[0]
+        original_ext = os.path.splitext(original_filename)[1]
+        
+        filter_name = self.filter_names.get(self.current_filter, "필터")
+        
+        # 새 파일명 생성
+        filename = f"{filename_without_ext}_{filter_name}{original_ext}"
         
         # 파일 저장
         success = cv2.imwrite(filename, processed_frame)
@@ -439,6 +569,13 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
                 "카메라 모드에서는 전체 영상 저장이 불가능합니다."
             )
             return
+        
+        original_filename = os.path.basename(self.loaded_file_path)
+        filename_without_ext = os.path.splitext(original_filename)[0]
+        
+        filter_name = self.filter_names.get(self.current_filter, "필터")
+        # 새 파일 생성
+        filename = f"{filename_without_ext}_{filter_name}.mp4"
             
         # 저장 중 팝업 표시 (non-blocking)
         progress_msg = QMessageBox(self)
@@ -461,10 +598,6 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        
-        # 파일명 생성
-        timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
-        filename = f"filtered_{timestamp}.mp4"
         
         # VideoWriter 생성
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -490,7 +623,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             
             frame_count += 1
             
-            # 진행 상황 업데이트 (10% 단위)
+            # 진행 상황 업데이트
             current_progress = int((frame_count / total_frames) * 100)
             if current_progress != last_progress and current_progress % 10 == 0:
                 progress_msg.setText(
