@@ -20,7 +20,7 @@ class FastEyeGazeTracker:
     def get_eye_region(self, landmarks, eye_points):
         """눈 영역의 ROI : 원하는 부분만 추출"""
 
-        
+
         points = np.array([(landmarks.part(i).x, landmarks.part(i).y) for i in eye_points])
         x, y, w, h = cv2.boundingRect(points)
 
@@ -191,7 +191,7 @@ def main():
     
     tracker = FastEyeGazeTracker()
     
-    print("눈동자 추적 시작... 'q'를 눌러 종료")
+    print("눈동자 추적 시작... 'esc'를 눌러 종료")
     
     while True:
         ret, frame = cap.read()
@@ -211,8 +211,7 @@ def main():
         # 결과 표시
         cv2.imshow("Eye Gaze Tracking", result_frame)
         out.write(result_frame)
-        # 'q' 키로 종료 (waitKey=1로 빠르게)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) == 27:  # ESC
             break
     
     cap.release()
