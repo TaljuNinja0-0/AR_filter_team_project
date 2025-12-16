@@ -101,7 +101,7 @@ def apply_mask_filter(frame):
         # 각도 계산 (턱 좌우)
         dx = jaw_right[0] - jaw_left[0]
         dy = jaw_right[1] - jaw_left[1]
-        angle = np.degrees(np.arctan2(dy, dx))
+        angle = -np.degrees(np.arctan2(dy, dx))
 
         # 마스크 자르기 및 크기 조절
         alpha = mask_img[:, :, 3]

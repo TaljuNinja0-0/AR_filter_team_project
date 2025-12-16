@@ -150,7 +150,7 @@ def apply_mustache_filter(frame):
 
         dx = mouth_right[0] - mouth_left[0]
         dy = mouth_right[1] - mouth_left[1]
-        angle = np.degrees(np.arctan2(dy, dx))
+        angle = -np.degrees(np.arctan2(dy, dx))
 
 
         alpha = mustache_img[:, :, 3]
