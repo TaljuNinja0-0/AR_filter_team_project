@@ -26,6 +26,8 @@ from bunny_filter_mapping import apply_bunny_filter as bunny_filter # 토끼 필
 from carnivalmask_filter_mapping import apply_carnivalmask_filter as carnivalmask_filter # 무대 가면 필터
 from mustache_filter import apply_mustache_filter as mustache_filter # 콧수염 필터
 from whitemask_filter import apply_whitemask_filter as whitemask_filter # 흰 마스크 필터
+from sunglass_filter_mapping import apply_sunglass_filter as sunglasses_filter # 선글라스 필터
+from mask_filter import apply_mask_filter as mask_filter # 마스크 필터  
 
 
 # 에플리케이션 메인 윈도우 클래스
@@ -46,10 +48,20 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # UI 로드 (디자인 적용)
         self.setupUi(self)
         
-        self.setWindowTitle("AR Filter Program")
+        self.setWindowTitle("AR Filter")
+
+        # 윈도우 아이콘 설정
+        icon_path = "icons/Icon_app.png"
+
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+            print(f"윈도우 아이콘 설정됨: {icon_path}")
+        else:
+            print(f"경고: 아이콘 파일 '{icon_path}'을 찾을 수 없습니다. 기본 아이콘을 사용합니다.")
 
         # 윈도우 창 최대화
         self.showMaximized() # 사용자가 크기 조절 가능.
+
 
         # QPushButton (필터 버튼)을 필터링.
         self.filter_buttons = {
@@ -73,6 +85,28 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             self.filter_bnt_18: "filter_bnt_18"
             }
         
+         # 필터 이름 매핑
+        self.filter_names = {
+            "filter_bnt_01": "Distorted_filter",
+            "filter_bnt_02": "Glitch_filter",
+            "filter_bnt_03": "camera_filter",
+            "filter_bnt_04": "vintage_filter",
+            "filter_bnt_05": "glasses_filter",
+            "filter_bnt_06": "monocle_filter",
+            "filter_bnt_07": "dog_filter",
+            "filter_bnt_08": "cat_filter",
+            "filter_bnt_09": "bunny_filter",
+            "filter_bnt_10": "carnivalmask_filter",
+            "filter_bnt_11": "mustache_filter",
+            "filter_bnt_12": "whitemask_filter",
+            "filter_bnt_13": "하트 필터",
+            "filter_bnt_14": "sunglasses_filter",
+            "filter_bnt_15": "mask_filter",
+            "filter_bnt_16": "불",
+            "filter_bnt_17": "시선 트랙킹",
+            "filter_bnt_18": "잔상"
+        }
+        
         self.filter_icons = { # 아이콘 매핑
             "filter_bnt_01": "icons/filter_01.png",  # 왜곡 필터 아이콘
             "filter_bnt_02": "icons/filter_02.png",  # 글리치
@@ -86,12 +120,12 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_10": "icons/filter_10.png",  # 무대 가면
             "filter_bnt_11": "icons/filter_11.png",  # 콧수염
             "filter_bnt_12": "icons/filter_12.png",  # 흰 마스크
-            "filter_bnt_13": "icons/filter_13.png",  # 산타A
-            #"filter_bnt_14": None,
-            #"filter_bnt_15": "icons/filter_15.png",
-            #"filter_bnt_16": "icons/filter_16.png",
-            #"filter_bnt_17": "icons/filter_17.png",
-            #filter_bnt_18": "icons/filter_18.png",
+            "filter_bnt_13": "icons/filter_13.png",  # 하트
+            "filter_bnt_14": "icons/filter_14.png",  # 선글라스
+            "filter_bnt_15": "icons/filter_15.png",  # 마스크
+            "filter_bnt_16": "icons/filter_16.png",  # 불
+            "filter_bnt_17": "icons/filter_17.png",  # 시선 트랙킹
+            "filter_bnt_18": "icons/filter_18.png",  # 잔상 필터
         }
 
         # === UI  ===
@@ -134,6 +168,8 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_10": carnivalmask_filter, # 무대 가면
             "filter_bnt_11": mustache_filter, # 콧수염
             "filter_bnt_12": whitemask_filter, # 흰 마스크
+            "filter_bnt_14": sunglasses_filter, # 선글라스
+            "filter_bnt_15": mask_filter, # 마스크
             # "filter_bnt_02": other_filter,
         }
         
@@ -151,10 +187,10 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_10": ['image', 'video'],  # 무대 가면
             "filter_bnt_11": ['image', 'video'],  # 콧수염
             "filter_bnt_12": ['image', 'video'],  # 흰 마스크
-            "filter_bnt_13": ['image', 'video'],  # 하트 필터
-            "filter_bnt_14": ['video'],  # 불 필터
-            "filter_bnt_15": ['video'],  # 
-            "filter_bnt_16": ['image', 'video'], #산타A
+            "filter_bnt_13": ['video'],  # 하트 필터
+            "filter_bnt_14": ['image', 'video'],  # 선글라스
+            "filter_bnt_15": ['image', 'video'],  # 마스크
+            "filter_bnt_16": ['image', 'video'], 
             "filter_bnt_17": ['image'],
             "filter_bnt_18": ['video'],
         }
@@ -417,8 +453,14 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         
         processed_frame = self.apply_ar_filter(self.current_frame.copy(), self.current_filter)
         
-        timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
-        filename = f"capture_{timestamp}.png"
+        original_filename = os.path.basename(self.loaded_file_path)
+        filename_without_ext = os.path.splitext(original_filename)[0]
+        original_ext = os.path.splitext(original_filename)[1]
+        
+        filter_name = self.filter_names.get(self.current_filter, "필터")
+        
+        # 새 파일명 생성
+        filename = f"{filename_without_ext}_{filter_name}{original_ext}"
         
         # 파일 저장
         success = cv2.imwrite(filename, processed_frame)
@@ -455,6 +497,13 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
                 "카메라 모드에서는 전체 영상 저장이 불가능합니다."
             )
             return
+        
+        original_filename = os.path.basename(self.loaded_file_path)
+        filename_without_ext = os.path.splitext(original_filename)[0]
+        
+        filter_name = self.filter_names.get(self.current_filter, "필터")
+        # 새 파일 생성
+        filename = f"{filename_without_ext}_{filter_name}.mp4"
             
         # 저장 중 팝업 표시 (non-blocking)
         progress_msg = QMessageBox(self)
@@ -477,10 +526,6 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        
-        # 파일명 생성
-        timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
-        filename = f"filtered_{timestamp}.mp4"
         
         # VideoWriter 생성
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -506,7 +551,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             
             frame_count += 1
             
-            # 진행 상황 업데이트 (10% 단위)
+            # 진행 상황 업데이트
             current_progress = int((frame_count / total_frames) * 100)
             if current_progress != last_progress and current_progress % 10 == 0:
                 progress_msg.setText(
