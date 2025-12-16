@@ -217,8 +217,8 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         self.video_display_label.setMinimumSize(QSize(1, 1))
         
         # 스크롤 영역의 최소 너비 설정
-        self.filter_scroll_area.setMinimumWidth(70)
-        self.filter_scroll_area.setMaximumWidth(90)
+        self.filter_scroll_area.setMinimumWidth(130)
+        self.filter_scroll_area.setMaximumWidth(130)
         
         # 스크롤 내용 위젯의 레이아웃을 VBoxLayout으로 재구성
         content_widget = self.filter_scroll_area.widget()
@@ -248,8 +248,8 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         self.filter_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
         # brt_box 최소 크기 설정
-        self.brt_box.setMinimumWidth(90)
-        self.brt_box.setMaximumWidth(110)
+        self.brt_box.setMinimumWidth(140)
+        self.brt_box.setMaximumWidth(140)
         
         # === 버튼 이미지 설정 ===
         self.setup_filter_button_images()
@@ -258,6 +258,9 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         # 필터 버튼에 아이콘 이미지 설정
         for button in self.filter_buttons:
             button_name = button.objectName()
+
+            button.setMinimumSize(QSize(100, 100))
+            button.setMaximumSize(QSize(100, 100))
             
             if button_name in self.filter_icons:
                 icon_path = self.filter_icons[button_name]
@@ -266,13 +269,17 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
                 if os.path.exists(icon_path):
                     icon = QIcon(icon_path)
                     button.setIcon(icon)
-                    button.setIconSize(QSize(40, 40))  # 아이콘 크기
+                    button.setIconSize(QSize(60, 60))  # 아이콘 크기
                     button.setText("")  # 텍스트 제거
                 else:
                     # 이미지가 없으면 버튼 번호만 표시
                     button_number = button_name.split('_')[-1]
                     button.setText(button_number)
 
+            # 원형 스타일 적용 (크기의 절반)
+            current_style = button.styleSheet()
+            if "border:" not in current_style:
+                button.setStyleSheet(current_style + "\nborder: 2px solid #E0E0E0;")
 
 
     def resizeEvent(self, event):
@@ -308,8 +315,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         if self.media_type is None:
             # 미디어가 로드되지 않은 경우 모든 버튼 비활성화
             for button in self.filter_buttons:
-                button.setEnabled(False)
-                button.setStyleSheet("border-radius: 25px; background-color: #CCCCCC;")  # 회색
+                button.setStyleSheet("border-radius: 50px; background-color: #CCCCCC;")
             return
         
         for button in self.filter_buttons:
@@ -325,20 +331,23 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
                     # 현재 선택된 필터면 강조
                     if button_name == self.current_filter:
                         button.setStyleSheet("""
-                            border-radius: 25px;
+                        QPushButton {
+                            border-radius: 50px;
                             background-color: #87CEEB;
                             border: 3px solid #4682B4;
+                            }
                         """)
                     else:
-                        button.setStyleSheet("border-radius: 25px; background-color: white;")
+                        button.setStyleSheet("border-radius: 50px; background-color: white;")
                 else:
                     # 비활성화
                     button.setEnabled(False)
-                    button.setStyleSheet("border-radius: 25px; background-color: #CCCCCC;")  # 회색
+                    button.setStyleSheet("border-radius: 50px; background-color: #CCCCCC;")
             else:
                 # 설정되지 않은 버튼은 기본적으로 비활성화
                 button.setEnabled(False)
-                button.setStyleSheet("border-radius: 25px; background-color: #CCCCCC;")
+                button.setStyleSheet("border-radius: 50px; background-color: #CCCCCC;")
+
 
     # --- [로직 함수] ---
 
