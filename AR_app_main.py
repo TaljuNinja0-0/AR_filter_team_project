@@ -26,6 +26,7 @@ from bunny_filter_mapping import apply_bunny_filter as bunny_filter # 토끼 필
 from carnivalmask_filter_mapping import apply_carnivalmask_filter as carnivalmask_filter # 무대 가면 필터
 from mustache_filter import apply_mustache_filter as mustache_filter # 콧수염 필터
 from whitemask_filter import apply_whitemask_filter as whitemask_filter # 흰 마스크 필터
+from santa_filter import apply_santa_filter_optimized as santa_filter # 산타 필터
 from sunglass_filter_mapping import apply_sunglass_filter as sunglasses_filter # 선글라스 필터
 from mask_filter import apply_mask_filter as mask_filter # 마스크 필터  
 
@@ -82,7 +83,8 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             self.filter_bnt_15: "filter_bnt_15",
             self.filter_bnt_16: "filter_bnt_16",
             self.filter_bnt_17: "filter_bnt_17",
-            self.filter_bnt_18: "filter_bnt_18"
+            self.filter_bnt_18: "filter_bnt_18",
+            self.filter_bnt_19: "filter_bnt_19",
             }
         
          # 필터 이름 매핑
@@ -99,12 +101,13 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_10": "carnivalmask_filter",
             "filter_bnt_11": "mustache_filter",
             "filter_bnt_12": "whitemask_filter",
-            "filter_bnt_13": "하트 필터",
+            "filter_bnt_13": "santa_filter",
             "filter_bnt_14": "sunglasses_filter",
             "filter_bnt_15": "mask_filter",
             "filter_bnt_16": "불",
             "filter_bnt_17": "시선 트랙킹",
-            "filter_bnt_18": "잔상"
+            "filter_bnt_18": "잔상",
+            "filter_bnt_19": "하트"
         }
         
         self.filter_icons = { # 아이콘 매핑
@@ -120,12 +123,13 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_10": "icons/filter_10.png",  # 무대 가면
             "filter_bnt_11": "icons/filter_11.png",  # 콧수염
             "filter_bnt_12": "icons/filter_12.png",  # 흰 마스크
-            "filter_bnt_13": "icons/filter_13.png",  # 하트
+            "filter_bnt_13": "icons/filter_13.png",  # 산타
             "filter_bnt_14": "icons/filter_14.png",  # 선글라스
             "filter_bnt_15": "icons/filter_15.png",  # 마스크
             "filter_bnt_16": "icons/filter_16.png",  # 불
             "filter_bnt_17": "icons/filter_17.png",  # 시선 트랙킹
             "filter_bnt_18": "icons/filter_18.png",  # 잔상 필터
+            "filter_bnt_19": "icons/filter_19.png",  # 하트 필터
         }
 
         # === UI  ===
@@ -168,6 +172,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_10": carnivalmask_filter, # 무대 가면
             "filter_bnt_11": mustache_filter, # 콧수염
             "filter_bnt_12": whitemask_filter, # 흰 마스크
+            "filter_bnt_13": santa_filter, # 산타 필터
             "filter_bnt_14": sunglasses_filter, # 선글라스
             "filter_bnt_15": mask_filter, # 마스크
             # "filter_bnt_02": other_filter,
@@ -187,12 +192,13 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_10": ['image', 'video'],  # 무대 가면
             "filter_bnt_11": ['image', 'video'],  # 콧수염
             "filter_bnt_12": ['image', 'video'],  # 흰 마스크
-            "filter_bnt_13": ['video'],  # 하트 필터
+            "filter_bnt_13": ['image', 'video'],  # 산타 필터
             "filter_bnt_14": ['image', 'video'],  # 선글라스
             "filter_bnt_15": ['image', 'video'],  # 마스크
             "filter_bnt_16": ['image', 'video'], 
             "filter_bnt_17": ['image'],
             "filter_bnt_18": ['video'],
+            "filter_bnt_19": ['video']
         }
 
 
