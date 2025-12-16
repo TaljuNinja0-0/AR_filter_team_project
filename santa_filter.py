@@ -7,7 +7,7 @@ import os
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 santa_hat_path = "assets/santa_filter_1.png"
 santa_beard_path = "assets/santa_filter_2.png"
-input_path = "smile_girl3.mp4"
+# input_path = "smile_girl3.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -224,7 +224,7 @@ def apply_santa_filter_optimized(frame):
 
     return frame
 
-
+'''
 # ====== 입력 처리 ======
 ext = os.path.splitext(input_path)[1].lower()
 
@@ -281,3 +281,4 @@ else:
     avg_fps = frame_count / total_time
     print(f"\n✅ 영상 결과 저장 완료: {out_path}")
     print(f"   총 {frame_count} 프레임 처리됨")
+'''

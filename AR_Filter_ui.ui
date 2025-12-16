@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>746</width>
-    <height>542</height>
+    <width>752</width>
+    <height>329</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -80,7 +80,7 @@ background-color: white;</string>
          <x>0</x>
          <y>60</y>
          <width>81</width>
-         <height>421</height>
+         <height>181</height>
         </rect>
        </property>
        <property name="sizePolicy">
@@ -104,7 +104,7 @@ background-color: white;</string>
           <x>0</x>
           <y>0</y>
           <width>79</width>
-          <height>419</height>
+          <height>179</height>
          </rect>
         </property>
         <widget class="QPushButton" name="filter_bnt_06">
@@ -630,6 +630,35 @@ background-color: white;</string>
           <string>PushButton</string>
          </property>
         </widget>
+        <widget class="QPushButton" name="filter_bnt_19">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>1080</y>
+           <width>50</width>
+           <height>50</height>
+          </rect>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>50</width>
+           <height>50</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border-radius: 25px; /* 크기의 절반 */
+background-color: white;</string>
+         </property>
+         <property name="text">
+          <string>PushButton</string>
+         </property>
+        </widget>
        </widget>
       </widget>
      </widget>
@@ -641,7 +670,7 @@ background-color: white;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>746</width>
+     <width>752</width>
      <height>33</height>
     </rect>
    </property>

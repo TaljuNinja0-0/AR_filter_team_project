@@ -24,7 +24,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(746, 542)
+        MainWindow.resize(752, 329)
         MainWindow.setAnimated(True)
         self.action_load_media = QAction(MainWindow)
         self.action_load_media.setObjectName(u"action_load_media")
@@ -57,14 +57,14 @@ class Ui_MainWindow(object):
         self.menu_toggle_button.setCheckable(True)
         self.filter_scroll_area = QScrollArea(self.brt_box)
         self.filter_scroll_area.setObjectName(u"filter_scroll_area")
-        self.filter_scroll_area.setGeometry(QRect(0, 60, 81, 421))
+        self.filter_scroll_area.setGeometry(QRect(0, 60, 81, 181))
         sizePolicy.setHeightForWidth(self.filter_scroll_area.sizePolicy().hasHeightForWidth())
         self.filter_scroll_area.setSizePolicy(sizePolicy)
         self.filter_scroll_area.setMinimumSize(QSize(30, 0))
         self.filter_scroll_area.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 79, 419))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 79, 179))
         self.filter_bnt_06 = QPushButton(self.scrollAreaWidgetContents)
         self.filter_bnt_06.setObjectName(u"filter_bnt_06")
         self.filter_bnt_06.setGeometry(QRect(0, 300, 50, 50))
@@ -210,6 +210,14 @@ class Ui_MainWindow(object):
         self.filter_bnt_18.setMinimumSize(QSize(50, 50))
         self.filter_bnt_18.setStyleSheet(u"border-radius: 25px; /* \ud06c\uae30\uc758 \uc808\ubc18 */\n"
 "background-color: white;")
+        self.filter_bnt_19 = QPushButton(self.scrollAreaWidgetContents)
+        self.filter_bnt_19.setObjectName(u"filter_bnt_19")
+        self.filter_bnt_19.setGeometry(QRect(0, 1080, 50, 50))
+        sizePolicy.setHeightForWidth(self.filter_bnt_19.sizePolicy().hasHeightForWidth())
+        self.filter_bnt_19.setSizePolicy(sizePolicy)
+        self.filter_bnt_19.setMinimumSize(QSize(50, 50))
+        self.filter_bnt_19.setStyleSheet(u"border-radius: 25px; /* \ud06c\uae30\uc758 \uc808\ubc18 */\n"
+"background-color: white;")
         self.filter_scroll_area.setWidget(self.scrollAreaWidgetContents)
 
         self.horizontalLayout_3.addWidget(self.brt_box)
@@ -219,7 +227,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 746, 33))
+        self.menubar.setGeometry(QRect(0, 0, 752, 33))
         self.menuFile = QMenu(self.menubar)
         self.menuFile.setObjectName(u"menuFile")
         MainWindow.setMenuBar(self.menubar)
@@ -258,6 +266,7 @@ class Ui_MainWindow(object):
         self.filter_bnt_16.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
         self.filter_bnt_17.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
         self.filter_bnt_18.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
+        self.filter_bnt_19.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
     # retranslateUi
 
