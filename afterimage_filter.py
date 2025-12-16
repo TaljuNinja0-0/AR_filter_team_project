@@ -13,7 +13,7 @@ predictor = dlib.shape_predictor(predictor_path)
 
 # ===== 전역 변수 =====
 MAX_TRAIL = 8       # 유지할 프레임 수
-ALPHA = 0.1          # 잔상 투명도
+ALPHA = 0.15          # 잔상 투명도
 face_trail = deque()
 
 # ===== 얼굴 영역 추출 =====
