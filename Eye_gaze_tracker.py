@@ -127,8 +127,8 @@ class EyeLaserTracker:
         laser_length = min_length + (gaze_distance * 2.5) * (max_length - min_length)
         
         # 시선 방향 벡터 계산
-        direction_x = weighted_deviation_x * 2.5  # 배율 증가로 방향 강조
-        direction_y = weighted_deviation_y * 2.5
+        direction_x = weighted_deviation_x * 2.0  # 배율 증가로 방향 강조
+        direction_y = weighted_deviation_y * 2.0
         
         # 방향 벡터 정규화 후 길이 적용
         magnitude = np.sqrt(direction_x**2 + direction_y**2)
