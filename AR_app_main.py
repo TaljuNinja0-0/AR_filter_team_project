@@ -28,7 +28,11 @@ from mustache_filter import apply_mustache_filter as mustache_filter # 콧수염
 from whitemask_filter import apply_whitemask_filter as whitemask_filter # 흰 마스크 필터
 from santa_filter import apply_santa_filter_optimized as santa_filter # 산타 필터
 from sunglass_filter_mapping import apply_sunglass_filter as sunglasses_filter # 선글라스 필터
-from mask_filter import apply_mask_filter as mask_filter # 마스크 필터  
+from mask_filter import apply_mask_filter as mask_filter # 마스크 필터
+from reaction_fire_filter import apply_fire_filter as fire_filter # 불 필터
+from Eye_gaze_tracker import apply_eye_laser_filter as eye_laser_filter # 시선 트랙킹 필터
+from afterimage_filter import apply_ghost_filter as afterimage_filter # 잔상 필터
+from reaction_heart_filter import apply_heart_filter as heart_filter # 하트 필터
 
 
 # 에플리케이션 메인 윈도우 클래스
@@ -42,8 +46,6 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
         self.media_type = None  # 'video' 또는 'image'
         self.loaded_file_path = None  # 불러온 파일 경로
         self.video_writer = None  # 영상 저장용 VideoWriter
-        self.is_recording = False  # 녹화 중인지 여부
-        self.recorded_frames = []  # 녹화된 프레임 저장
         self.current_frame = None  # 사진용 현재 프레임 저장
         
         # UI 로드 (디자인 적용)
@@ -104,10 +106,10 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_13": "santa_filter",
             "filter_bnt_14": "sunglasses_filter",
             "filter_bnt_15": "mask_filter",
-            "filter_bnt_16": "불",
-            "filter_bnt_17": "시선 트랙킹",
-            "filter_bnt_18": "잔상",
-            "filter_bnt_19": "하트"
+            "filter_bnt_16": "fire_filter",
+            "filter_bnt_17": "eye_laser_filter",
+            "filter_bnt_18": "afterimage_filter",
+            "filter_bnt_19": "heart_filter"
         }
         
         self.filter_icons = { # 아이콘 매핑
@@ -175,7 +177,10 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_13": santa_filter, # 산타 필터
             "filter_bnt_14": sunglasses_filter, # 선글라스
             "filter_bnt_15": mask_filter, # 마스크
-            # "filter_bnt_02": other_filter,
+            "filter_bnt_16": fire_filter, # 불 필터
+            "filter_bnt_17": eye_laser_filter, # 시선 트랙킹
+            "filter_bnt_18": afterimage_filter, # 잔상 필터
+            "filter_bnt_19": heart_filter # 하트 필터
         }
         
         # 각 필터별 사용 가능한 미디어 타입 설정
@@ -195,10 +200,10 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "filter_bnt_13": ['image', 'video'],  # 산타 필터
             "filter_bnt_14": ['image', 'video'],  # 선글라스
             "filter_bnt_15": ['image', 'video'],  # 마스크
-            "filter_bnt_16": ['image', 'video'], 
-            "filter_bnt_17": ['image'],
-            "filter_bnt_18": ['video'],
-            "filter_bnt_19": ['video']
+            "filter_bnt_16": ['video'], # 불 필터
+            "filter_bnt_17": ['video'], # 시선 트랙킹
+            "filter_bnt_18": ['video'], # 잔상 필터
+            "filter_bnt_19": ['video'] # 하트 필터
         }
 
 
@@ -362,11 +367,6 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
                 print(f"사진 로드됨: {file_path}")
             else:
                 self.media_type = 'unknown'
-        else:
-            self.cap = cv2.VideoCapture(0) # 카메라 시도
-            self.media_type = 'video'
-            self.loaded_file_path = None
-            print("카메라 모드")
 
         if self.cap.isOpened():
             # 새 미디어 로드 시 필터 자동 해제
@@ -495,14 +495,6 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             QMessageBox.warning(self, "저장 실패", "저장할 영상이 없습니다.")
             return
         
-        if self.loaded_file_path is None:
-            print("카메라 모드에서는 전체 영상 저장이 불가능합니다.")
-            QMessageBox.warning(
-                self,
-                "저장 불가",
-                "카메라 모드에서는 전체 영상 저장이 불가능합니다."
-            )
-            return
         
         original_filename = os.path.basename(self.loaded_file_path)
         filename_without_ext = os.path.splitext(original_filename)[0]
@@ -586,41 +578,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             "저장 완료",
             f"영상이 저장되었습니다.\n파일명: {filename}"
         )
-
-    def start_recording(self):
-        # 영상 녹화 시작(영상 모드)
-        self.is_recording = True
-        self.recorded_frames = []
-        print("녹화 시작")
-        
-    def stop_recording(self):
-        """영상 녹화를 중지하고 파일로 저장합니다. (영상 모드)"""
-        if not self.is_recording or len(self.recorded_frames) == 0:
-            print("녹화된 프레임이 없습니다.")
-            return
-        
-        self.is_recording = False
-        
-        # 파일명 생성
-        timestamp = QDateTime.currentDateTime().toString("yyyyMMdd_HHmmss")
-        filename = f"recorded_{timestamp}.mp4"
-        
-        # 첫 프레임의 크기를 가져옴
-        height, width = self.recorded_frames[0].shape[:2]
-        
-        # VideoWriter 생성
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        fps = 30  # 프레임 레이트
-        out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
-        
-        # 모든 프레임 저장
-        for frame in self.recorded_frames:
-            out.write(frame)
-        
-        out.release()
-        self.recorded_frames = []
-        
-        print(f"영상 저장됨: {filename}")
+    
 
     def apply_ar_filter(self, frame, filter_name):
         """AR 필터를 적용"""
@@ -644,11 +602,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             # 1. AR 필터 적용
             processed_frame = self.apply_ar_filter(frame.copy(), self.current_filter)
             
-            # 2. 영상 녹화 중이라면 프레임 저장
-            if self.is_recording:
-                self.recorded_frames.append(processed_frame.copy())
-
-            # 3. OpenCV (BGR) -> PySide6 (QPixmap) 변환
+            # 2. OpenCV (BGR) -> PySide6 (QPixmap) 변환
             height, width, channel = processed_frame.shape
             bytes_per_line = 3 * width
             
@@ -657,7 +611,7 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             q_image = QImage(rgb_frame.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
             q_pixmap = QPixmap.fromImage(q_image)
 
-            # 4. QLabel에 이미지 표시
+            # 3. QLabel에 이미지 표시
             scaled_pixmap = q_pixmap.scaled(
                 self.video_display_label.size(), 
                 Qt.AspectRatioMode.KeepAspectRatio,
@@ -670,15 +624,8 @@ class ARFilterApp(QMainWindow, Ui_MainWindow):
             if self.media_type == 'video' and self.loaded_file_path is not None:
                 # 영상 파일이 끝에 도달했을 때 (반복 재생 로직)
                 
-                if self.is_recording:
-                    self.stop_recording()
-                
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                
-            elif self.media_type == 'video' and self.loaded_file_path is None:
-                # 카메라 모드 오류/종료 시
-                self.timer.stop()
-                print("카메라 스트림 종료 또는 오류 발생")
+        
 
 
 

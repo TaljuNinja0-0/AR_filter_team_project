@@ -6,7 +6,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 fire_path = "assets/fire.png"
-input_path = "mad_girl.mp4"
+#input_path = "mad_girl.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -138,6 +138,7 @@ def apply_fire_filter(frame):
     fire_particles = new_particles
     return frame
 
+'''
 # ===== 영상 처리 =====
 video_exts = [".mp4", ".avi", ".mov", ".mkv"]
 ext = os.path.splitext(input_path)[1].lower()
@@ -173,3 +174,4 @@ if ext in video_exts:
     out.release()
     cv2.destroyAllWindows()
     print(f"✅ 영상 결과 저장 완료: {out_path}")
+'''

@@ -6,7 +6,7 @@ from collections import deque
 
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
-input_path = "smile_girl2.mp4"
+#input_path = "smile_girl2.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -54,6 +54,7 @@ def apply_ghost_filter(frame):
 
     return output
 
+'''
 # ===== 영상 처리 =====
 cap = cv2.VideoCapture(input_path)
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
@@ -85,3 +86,4 @@ cap.release()
 out.release()
 cv2.destroyAllWindows()
 print(f"✅ 영상 결과 저장 완료: {out_path}")
+'''

@@ -7,7 +7,7 @@ import os
 # ====== 설정 ======
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 filter_path = ["assets/heart.png"]
-input_path = "smile_girl3.mp4"
+#input_path = "smile_girl3.mp4"
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
@@ -180,6 +180,7 @@ def apply_heart_filter(frame):
     heart_particles = new_particles
     return frame
 
+'''
 # ===== 영상 처리 =====
 cap = cv2.VideoCapture(input_path)
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
@@ -209,3 +210,4 @@ cap.release()
 out.release()
 cv2.destroyAllWindows()
 print(f"✅ 영상 결과 저장 완료: {out_path}")
+'''

@@ -3,6 +3,8 @@ import dlib
 import numpy as np
 import os
 
+_tracker = None
+
 class EyeLaserTracker:
     def __init__(self):
         # dlib 얼굴 검출기 및 랜드마크 예측기 초기화
@@ -323,7 +325,15 @@ class EyeLaserTracker:
         
         return result_frame
 
+def apply_eye_laser_filter(frame):
+    global _tracker
 
+    if _tracker is None:
+        _tracker = EyeLaserTracker()
+
+    return _tracker.process_frame(frame, show_debug=False)
+
+'''
 def main():
     input_path = "smile_girl3.mp4"
     cap = cv2.VideoCapture(input_path)
@@ -382,3 +392,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''
