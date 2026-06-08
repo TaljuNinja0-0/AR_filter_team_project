@@ -1,4 +1,8 @@
 ar_env/
 .vs/
+/*.png
+/*.jpg
+/*.jpeg
 *.mp4
+!assets_moving/*.mp4
 !AR_Fliter 시연 영상.mp4
